@@ -1,0 +1,7 @@
+{
+  "name": "Remix: DZ Dialect",
+  "description": "A powerful multi-API chat application supporting OpenAI, Gemini, OpenRouter, Anthropic, and Hugging Face with voice support and smart model selection.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
