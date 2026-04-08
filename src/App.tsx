@@ -316,7 +316,7 @@ export default function App() {
             groq: 'llama-3.3-70b-versatile',
             xai: 'grok-beta',
             openai: 'gpt-4o-mini',
-            openrouter: 'google/gemini-flash-1.5'
+            openrouter: 'google/gemini-2.0-flash-001'
           };
 
           const response = await fetch(apiEndpoints[settings.provider], {
@@ -339,7 +339,11 @@ export default function App() {
             })
           });
 
-          if (!response.ok) throw new Error(`${settings.provider.toUpperCase()} API request failed`);
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const apiError = errorData.error?.message || errorData.error || response.statusText;
+            throw new Error(`${settings.provider.toUpperCase()} API request failed: ${apiError}`);
+          }
           const data = await response.json();
           text = (data.choices[0].message.content || '').trim();
         }
@@ -713,7 +717,7 @@ export default function App() {
           groq: 'llama-3.3-70b-versatile',
           xai: 'grok-beta',
           openai: 'gpt-4o-mini',
-          openrouter: 'google/gemini-flash-1.5'
+          openrouter: 'google/gemini-2.0-flash-001'
         };
 
         const response = await fetch(apiEndpoints[provider], {
@@ -732,7 +736,11 @@ export default function App() {
             max_tokens: 1
           })
         });
-        if (!response.ok) throw new Error();
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const apiError = errorData.error?.message || errorData.error || response.statusText;
+          throw new Error(apiError);
+        }
       }
       setKeyStatuses(prev => ({ ...prev, [provider]: 'valid' }));
     } catch (err) {
@@ -1024,7 +1032,7 @@ export default function App() {
                       <option value="groq">Groq (Fastest)</option>
                       <option value="xai">XAI (Grok)</option>
                       <option value="openai">OpenAI (GPT-4o Mini)</option>
-                      <option value="openrouter">OpenRouter (Gemini Flash)</option>
+                      <option value="openrouter">OpenRouter (Gemini 2.0 Flash)</option>
                     </select>
                     <div className="absolute right-4 pointer-events-none text-gray-400">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
