@@ -45,11 +45,11 @@ interface AppSettings {
   theme: 'light' | 'dark';
 }
 
-const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string }[]> = {
+const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string; isFree?: boolean }[]> = {
   gemini: [
-    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash' },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', isFree: true },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', isFree: true },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', isFree: true },
   ],
   openai: [
     { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
@@ -57,6 +57,9 @@ const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string }[]> = {
   ],
   openrouter: [
     { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash' },
+    { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)', isFree: true },
+    { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', isFree: true },
+    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (Free)', isFree: true },
     { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
     { id: 'meta-llama/llama-3.1-405b-instruct', name: 'Llama 3.1 405B' },
     { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat' },
@@ -66,9 +69,9 @@ const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string }[]> = {
     { id: 'grok-2-1212', name: 'Grok 2' },
   ],
   groq: [
-    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B' },
-    { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B' },
-    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B' },
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', isFree: true },
+    { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B', isFree: true },
+    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', isFree: true },
   ],
 };
 
@@ -810,27 +813,50 @@ export default function App() {
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
-            <Cpu size={14} />
-            Model
+        <div className="hidden md:flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+              <Globe size={14} />
+              Service
+            </div>
+            <select 
+              value={settings.provider}
+              onChange={(e) => setSettings({ ...settings, provider: e.target.value as APIProvider })}
+              className="bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer pr-6 appearance-none"
+              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '12px' }}
+            >
+              <option value="gemini" className="bg-white dark:bg-[#1A1D23]">Gemini</option>
+              <option value="groq" className="bg-white dark:bg-[#1A1D23]">Groq</option>
+              <option value="xai" className="bg-white dark:bg-[#1A1D23]">XAI</option>
+              <option value="openai" className="bg-white dark:bg-[#1A1D23]">OpenAI</option>
+              <option value="openrouter" className="bg-white dark:bg-[#1A1D23]">OpenRouter</option>
+            </select>
           </div>
-          <select 
-            value={settings.selectedModels[settings.provider]}
-            onChange={(e) => setSettings({
-              ...settings,
-              selectedModels: {
-                ...settings.selectedModels,
-                [settings.provider]: e.target.value
-              }
-            })}
-            className="bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer pr-6 appearance-none"
-            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '12px' }}
-          >
-            {PROVIDER_MODELS[settings.provider].map(model => (
-              <option key={model.id} value={model.id} className="bg-white dark:bg-[#1A1D23]">{model.name}</option>
-            ))}
-          </select>
+
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+              <Cpu size={14} />
+              Model
+            </div>
+            <select 
+              value={settings.selectedModels[settings.provider]}
+              onChange={(e) => setSettings({
+                ...settings,
+                selectedModels: {
+                  ...settings.selectedModels,
+                  [settings.provider]: e.target.value
+                }
+              })}
+              className="bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer pr-6 appearance-none"
+              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '12px' }}
+            >
+              {PROVIDER_MODELS[settings.provider].map(model => (
+                <option key={model.id} value={model.id} className="bg-white dark:bg-[#1A1D23]">
+                  {model.isFree ? '🎁 ' : ''}{model.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -852,28 +878,51 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto p-6 md:p-12">
-        {/* Mobile Model Selector */}
-        <div className="md:hidden mb-6 flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
-            <Cpu size={14} />
-            Model
+        {/* Mobile Selectors */}
+        <div className="md:hidden mb-6 flex flex-col gap-3">
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+              <Globe size={14} />
+              Service
+            </div>
+            <select 
+              value={settings.provider}
+              onChange={(e) => setSettings({ ...settings, provider: e.target.value as APIProvider })}
+              className="flex-1 bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer pr-6 appearance-none"
+              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '12px' }}
+            >
+              <option value="gemini" className="bg-white dark:bg-[#1A1D23]">Gemini</option>
+              <option value="groq" className="bg-white dark:bg-[#1A1D23]">Groq</option>
+              <option value="xai" className="bg-white dark:bg-[#1A1D23]">XAI</option>
+              <option value="openai" className="bg-white dark:bg-[#1A1D23]">OpenAI</option>
+              <option value="openrouter" className="bg-white dark:bg-[#1A1D23]">OpenRouter</option>
+            </select>
           </div>
-          <select 
-            value={settings.selectedModels[settings.provider]}
-            onChange={(e) => setSettings({
-              ...settings,
-              selectedModels: {
-                ...settings.selectedModels,
-                [settings.provider]: e.target.value
-              }
-            })}
-            className="flex-1 bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer pr-6 appearance-none"
-            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '12px' }}
-          >
-            {PROVIDER_MODELS[settings.provider].map(model => (
-              <option key={model.id} value={model.id} className="bg-white dark:bg-[#1A1D23]">{model.name}</option>
-            ))}
-          </select>
+
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+              <Cpu size={14} />
+              Model
+            </div>
+            <select 
+              value={settings.selectedModels[settings.provider]}
+              onChange={(e) => setSettings({
+                ...settings,
+                selectedModels: {
+                  ...settings.selectedModels,
+                  [settings.provider]: e.target.value
+                }
+              })}
+              className="flex-1 bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer pr-6 appearance-none"
+              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '12px' }}
+            >
+              {PROVIDER_MODELS[settings.provider].map(model => (
+                <option key={model.id} value={model.id} className="bg-white dark:bg-[#1A1D23]">
+                  {model.isFree ? '🎁 ' : ''}{model.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
@@ -1129,7 +1178,9 @@ export default function App() {
                       className="w-full p-3 bg-gray-50 dark:bg-[#0F1115] border border-gray-200 dark:border-gray-800 rounded-xl outline-none focus:border-blue-500 appearance-none cursor-pointer"
                     >
                       {PROVIDER_MODELS[settings.provider].map(model => (
-                        <option key={model.id} value={model.id}>{model.name}</option>
+                        <option key={model.id} value={model.id}>
+                          {model.isFree ? '🎁 ' : ''}{model.name}
+                        </option>
                       ))}
                     </select>
                     <div className="absolute right-4 pointer-events-none text-gray-400">
