@@ -15,7 +15,8 @@ body {
   width: 100%;
   height: 100%;
   z-index: -1;
-  background-image: url('/background.jpg');
+  background-color: #0f1115;
+  background-image: url('https://picsum.photos/seed/algeria/1920/1080?blur=10');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
