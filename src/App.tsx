@@ -794,15 +794,12 @@ export default function App() {
       <header className="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 sticky top-0 bg-white/80 dark:bg-[#0F1115]/80 backdrop-blur-md z-40">
         <div className="flex items-center gap-3">
           <div className="h-10 flex items-center">
-            <img 
-              src="/logo.png" 
-              alt="DZ Dialect Logo" 
-              className="h-full w-auto object-contain max-w-[150px]"
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
+            <div className="flex items-center gap-2">
+              <Languages className="text-blue-500" size={28} />
+              <span className="text-xl font-black tracking-tighter text-gray-900 dark:text-white">
+                DZ <span className="text-blue-500">Dialect</span>
+              </span>
+            </div>
           </div>
           <div className="flex flex-col">
             <h1 className="text-2xl font-black tracking-tighter flex items-center">
