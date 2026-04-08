@@ -720,7 +720,11 @@ export default function App() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
+            'Authorization': `Bearer ${key}`,
+            ...(provider === 'openrouter' ? {
+              'HTTP-Referer': window.location.origin,
+              'X-Title': 'DZ Dialect'
+            } : {})
           },
           body: JSON.stringify({
             model: models[provider],
@@ -1019,8 +1023,8 @@ export default function App() {
                       <option value="gemini">Google Gemini (Recommended)</option>
                       <option value="groq">Groq (Fastest)</option>
                       <option value="xai">XAI (Grok)</option>
-                      <option value="openai">OpenAI (Coming Soon)</option>
-                      <option value="openrouter">OpenRouter (Coming Soon)</option>
+                      <option value="openai">OpenAI (GPT-4o Mini)</option>
+                      <option value="openrouter">OpenRouter (Gemini Flash)</option>
                     </select>
                     <div className="absolute right-4 pointer-events-none text-gray-400">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
