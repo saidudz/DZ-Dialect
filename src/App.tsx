@@ -19,7 +19,8 @@ import {
   Loader2,
   X,
   Save,
-  Globe
+  Globe,
+  Cpu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
@@ -35,6 +36,7 @@ type VoiceStyle = 'natural' | 'storyteller';
 interface AppSettings {
   apiKeys: Record<APIProvider, string>;
   provider: APIProvider;
+  selectedModels: Record<APIProvider, string>;
   ttsProvider: TTSProvider;
   geminiVoice: GeminiVoice;
   voiceGender: VoiceGender;
@@ -42,6 +44,33 @@ interface AppSettings {
   defaultOutputLang: string;
   theme: 'light' | 'dark';
 }
+
+const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string }[]> = {
+  gemini: [
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+  ],
+  openai: [
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+    { id: 'gpt-4o', name: 'GPT-4o' },
+  ],
+  openrouter: [
+    { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash' },
+    { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
+    { id: 'meta-llama/llama-3.1-405b', name: 'Llama 3.1 405B' },
+    { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat' },
+  ],
+  xai: [
+    { id: 'grok-beta', name: 'Grok Beta' },
+    { id: 'grok-2-1212', name: 'Grok 2' },
+  ],
+  groq: [
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B' },
+    { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B' },
+    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B' },
+  ],
+};
 
 const DEFAULT_SETTINGS: AppSettings = {
   apiKeys: {
@@ -52,6 +81,13 @@ const DEFAULT_SETTINGS: AppSettings = {
     groq: '',
   },
   provider: 'gemini',
+  selectedModels: {
+    gemini: 'gemini-3-flash-preview',
+    openai: 'gpt-4o-mini',
+    openrouter: 'google/gemini-2.0-flash-001',
+    xai: 'grok-beta',
+    groq: 'llama-3.3-70b-versatile',
+  },
   ttsProvider: 'puter',
   geminiVoice: 'Zephyr', 
   voiceGender: 'female',
@@ -93,7 +129,14 @@ export default function App() {
           };
           delete parsed.apiKey;
         }
-        return { ...DEFAULT_SETTINGS, ...parsed };
+        return { 
+          ...DEFAULT_SETTINGS, 
+          ...parsed,
+          selectedModels: {
+            ...DEFAULT_SETTINGS.selectedModels,
+            ...(parsed.selectedModels || {})
+          }
+        };
       }
     } catch (err) {
       console.error('Failed to parse settings:', err);
@@ -294,7 +337,7 @@ export default function App() {
         if (settings.provider === 'gemini') {
           const genAI = new GoogleGenAI({ apiKey: apiKeyToUse });
           const response = await genAI.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: settings.selectedModels.gemini,
             contents: inputText,
             config: {
               systemInstruction: systemPrompt,
@@ -311,14 +354,6 @@ export default function App() {
             openrouter: 'https://openrouter.ai/api/v1/chat/completions'
           };
 
-          const models: Record<APIProvider, string> = {
-            gemini: '',
-            groq: 'llama-3.3-70b-versatile',
-            xai: 'grok-beta',
-            openai: 'gpt-4o-mini',
-            openrouter: 'google/gemini-2.0-flash-001'
-          };
-
           const response = await fetch(apiEndpoints[settings.provider], {
             method: 'POST',
             headers: {
@@ -330,7 +365,7 @@ export default function App() {
               } : {})
             },
             body: JSON.stringify({
-              model: models[settings.provider],
+              model: settings.selectedModels[settings.provider],
               messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: inputText }
@@ -699,7 +734,7 @@ export default function App() {
       if (provider === 'gemini') {
         const genAI = new GoogleGenAI({ apiKey: key });
         await genAI.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: settings.selectedModels.gemini,
           contents: "hi",
           config: { maxOutputTokens: 1 }
         });
@@ -710,14 +745,6 @@ export default function App() {
           xai: 'https://api.x.ai/v1/chat/completions',
           openai: 'https://api.openai.com/v1/chat/completions',
           openrouter: 'https://openrouter.ai/api/v1/chat/completions'
-        };
-
-        const models: Record<APIProvider, string> = {
-          gemini: '',
-          groq: 'llama-3.3-70b-versatile',
-          xai: 'grok-beta',
-          openai: 'gpt-4o-mini',
-          openrouter: 'google/gemini-2.0-flash-001'
         };
 
         const response = await fetch(apiEndpoints[provider], {
@@ -731,7 +758,7 @@ export default function App() {
             } : {})
           },
           body: JSON.stringify({
-            model: models[provider],
+            model: settings.selectedModels[provider],
             messages: [{ role: 'user', content: 'hi' }],
             max_tokens: 1
           })
@@ -783,6 +810,29 @@ export default function App() {
           </div>
         </div>
 
+        <div className="hidden md:flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+            <Cpu size={14} />
+            Model
+          </div>
+          <select 
+            value={settings.selectedModels[settings.provider]}
+            onChange={(e) => setSettings({
+              ...settings,
+              selectedModels: {
+                ...settings.selectedModels,
+                [settings.provider]: e.target.value
+              }
+            })}
+            className="bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer pr-6 appearance-none"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '12px' }}
+          >
+            {PROVIDER_MODELS[settings.provider].map(model => (
+              <option key={model.id} value={model.id} className="bg-white dark:bg-[#1A1D23]">{model.name}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex items-center gap-2">
           <button 
             onClick={toggleTheme}
@@ -802,6 +852,30 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto p-6 md:p-12">
+        {/* Mobile Model Selector */}
+        <div className="md:hidden mb-6 flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+            <Cpu size={14} />
+            Model
+          </div>
+          <select 
+            value={settings.selectedModels[settings.provider]}
+            onChange={(e) => setSettings({
+              ...settings,
+              selectedModels: {
+                ...settings.selectedModels,
+                [settings.provider]: e.target.value
+              }
+            })}
+            className="flex-1 bg-transparent text-sm font-medium px-2 py-1 outline-none cursor-pointer pr-6 appearance-none"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'currentColor\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '12px' }}
+          >
+            {PROVIDER_MODELS[settings.provider].map(model => (
+              <option key={model.id} value={model.id} className="bg-white dark:bg-[#1A1D23]">{model.name}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
           {/* Input Section */}
           <section className="flex flex-col gap-4">
@@ -1033,6 +1107,30 @@ export default function App() {
                       <option value="xai">XAI (Grok)</option>
                       <option value="openai">OpenAI (GPT-4o Mini)</option>
                       <option value="openrouter">OpenRouter (Gemini 2.0 Flash)</option>
+                    </select>
+                    <div className="absolute right-4 pointer-events-none text-gray-400">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Model for {settings.provider.toUpperCase()}</label>
+                  <div className="relative flex items-center">
+                    <select 
+                      value={settings.selectedModels[settings.provider]}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        selectedModels: {
+                          ...settings.selectedModels,
+                          [settings.provider]: e.target.value
+                        }
+                      })}
+                      className="w-full p-3 bg-gray-50 dark:bg-[#0F1115] border border-gray-200 dark:border-gray-800 rounded-xl outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                    >
+                      {PROVIDER_MODELS[settings.provider].map(model => (
+                        <option key={model.id} value={model.id}>{model.name}</option>
+                      ))}
                     </select>
                     <div className="absolute right-4 pointer-events-none text-gray-400">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
