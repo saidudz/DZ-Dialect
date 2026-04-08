@@ -58,7 +58,7 @@ const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string }[]> = {
   openrouter: [
     { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash' },
     { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
-    { id: 'meta-llama/llama-3.1-405b', name: 'Llama 3.1 405B' },
+    { id: 'meta-llama/llama-3.1-405b-instruct', name: 'Llama 3.1 405B' },
     { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat' },
   ],
   xai: [
