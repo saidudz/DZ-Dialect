@@ -751,17 +751,23 @@ export default function App() {
       {/* Top Bar */}
       <header className="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 sticky top-0 bg-white/80 dark:bg-[#0F1115]/80 backdrop-blur-md z-40">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-            <Globe className="text-white w-6 h-6" />
+          <div className="h-10 flex items-center">
+            <img 
+              src="/logo.png" 
+              alt="DZ Dialect Logo" 
+              className="h-full w-auto object-contain max-w-[150px]"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
           </div>
-          <div className="flex flex-col -gap-1">
-            <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
-              DZ Dialect
-              <span className="px-1.5 py-0.5 bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 text-[8px] font-black uppercase tracking-widest rounded-md border border-pink-200 dark:border-pink-800">
-                Voiceover
-              </span>
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-black tracking-tighter flex items-center">
+              <span className="text-[#006233]">DZ</span>
+              <span className="mx-1 text-gray-400 dark:text-gray-500">|</span>
+              <span className="text-[#D21034]">Dialect</span>
             </h1>
-            <span className="text-[10px] text-gray-400 font-medium">Algerian Darija AI</span>
           </div>
         </div>
 
@@ -829,7 +835,7 @@ export default function App() {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Type or paste text here..."
-                className="w-full h-64 md:h-80 p-6 bg-white dark:bg-[#1A1D23] rounded-3xl border border-gray-200 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-600 outline-none resize-none text-lg leading-relaxed shadow-sm transition-all"
+                className="w-full h-64 md:h-80 p-6 bg-white dark:bg-[#1A1D23] rounded-3xl border border-gray-200 dark:border-gray-800 focus:border-[#006233] dark:focus:border-[#00a857] outline-none resize-none text-lg leading-relaxed shadow-sm transition-all"
               />
               <div className="absolute bottom-4 right-4 text-xs text-gray-400">
                 {inputText.length} characters
@@ -841,7 +847,7 @@ export default function App() {
           <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
             <button 
               onClick={handleSwap}
-              className="w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-600/30 transition-transform hover:rotate-180 duration-500"
+              className="w-12 h-12 bg-[#006233] hover:bg-[#004d28] text-white rounded-full flex items-center justify-center shadow-xl shadow-green-900/30 transition-transform hover:rotate-180 duration-500 border-2 border-white/20"
             >
               <ArrowRightLeft size={20} />
             </button>
@@ -851,7 +857,7 @@ export default function App() {
           <div className="flex lg:hidden justify-center -my-3 z-10">
             <button 
               onClick={handleSwap}
-              className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg"
+              className="w-10 h-10 bg-[#006233] text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white/20"
             >
               <ArrowRightLeft size={18} className="rotate-90" />
             </button>
@@ -880,8 +886,8 @@ export default function App() {
                     className={cn(
                       "px-3 py-2 rounded-xl transition-all flex items-center gap-2",
                       isSpeaking 
-                        ? "bg-red-100 dark:bg-red-900/30 text-red-600 animate-pulse" 
-                        : "hover:bg-gray-100 dark:hover:bg-gray-800 text-blue-600 dark:text-blue-400"
+                        ? "bg-red-100 dark:bg-red-900/30 text-[#D21034] animate-pulse" 
+                        : "hover:bg-gray-100 dark:hover:bg-gray-800 text-[#006233] dark:text-[#00a857]"
                     )}
                     title={isSpeaking ? "Stop" : "Listen Voiceover"}
                   >
@@ -905,7 +911,7 @@ export default function App() {
               )}>
                 {isTranslating ? (
                   <div className="flex flex-col items-center justify-center h-full gap-3">
-                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                    <Loader2 className="w-8 h-8 text-[#006233] animate-spin" />
                     <p className="text-sm font-medium animate-pulse">Translating to {targetLang}...</p>
                   </div>
                 ) : (
@@ -921,7 +927,7 @@ export default function App() {
           <button
             onClick={handleTranslate}
             disabled={isTranslating || !inputText.trim()}
-            className="px-12 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-600/20 transition-all active:scale-95 flex items-center gap-3"
+            className="px-12 py-4 bg-gradient-to-r from-[#006233] to-[#006233] hover:from-[#004d28] hover:to-[#004d28] disabled:bg-gray-400 text-white rounded-2xl font-bold text-lg shadow-xl shadow-green-900/20 transition-all active:scale-95 flex items-center gap-3 border-b-4 border-[#D21034]"
           >
             {isTranslating ? <Loader2 className="animate-spin" /> : <Languages />}
             Translate
@@ -1028,8 +1034,8 @@ export default function App() {
                   </div>
 
                   {/* Smart Detection Input */}
-                  <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl space-y-2">
-                    <label className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                  <div className="p-4 bg-green-50/50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30 rounded-2xl space-y-2">
+                    <label className="text-xs font-bold text-[#006233] dark:text-[#00a857] flex items-center gap-1">
                       <Globe size={12} />
                       Smart Key Detection
                     </label>
