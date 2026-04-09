@@ -58,11 +58,11 @@ const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string; isFree?: 
   openrouter: [
     { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash' },
     { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)', isFree: true },
+    { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (Free)', isFree: true },
     { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', isFree: true },
-    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (Free)', isFree: true },
+    { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3' },
+    { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1' },
     { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
-    { id: 'meta-llama/llama-3.1-405b-instruct', name: 'Llama 3.1 405B' },
-    { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat' },
   ],
   xai: [
     { id: 'grok-beta', name: 'Grok Beta' },
@@ -347,6 +347,7 @@ export default function App() {
             config: {
               systemInstruction: systemPrompt,
               temperature: 0.1 + (attempts * 0.1),
+              maxOutputTokens: 1000,
             }
           });
           text = (response.text || '').trim();
@@ -375,7 +376,8 @@ export default function App() {
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: inputText }
               ],
-              temperature: 0.1 + (attempts * 0.1)
+              temperature: 0.1 + (attempts * 0.1),
+              max_tokens: 1000
             })
           });
 
