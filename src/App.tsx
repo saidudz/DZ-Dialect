@@ -797,7 +797,13 @@ export default function App() {
       {/* Top Bar */}
       <header className="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 sticky top-0 bg-white/80 dark:bg-[#0F1115]/80 backdrop-blur-md z-40">
         <div className="flex items-center gap-3">
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
+            <img 
+              src="https://i.postimg.cc/zDSBXFzD/Logo.png" 
+              alt="DZ Dialect Logo" 
+              className="h-10 w-auto object-contain"
+              referrerPolicy="no-referrer"
+            />
             <h1 className="text-xl font-black tracking-tighter flex items-center leading-none">
               <span className="text-[#006233]">DZ</span>
               <span className="mx-1 text-gray-300 dark:text-gray-600 font-light">|</span>
