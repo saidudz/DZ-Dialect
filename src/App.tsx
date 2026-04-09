@@ -44,6 +44,7 @@ interface AppSettings {
   geminiVoice: GeminiVoice;
   voiceGender: VoiceGender;
   voiceStyle: VoiceStyle;
+  voiceSpeed: number;
   speakerGender: Gender;
   recipientGender: Gender;
   defaultOutputLang: string;
@@ -54,8 +55,8 @@ interface AppSettings {
 const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string; isFree?: boolean }[]> = {
   gemini: [
     { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', isFree: true },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', isFree: true },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', isFree: true },
+    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', isFree: true },
+    { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite', isFree: true },
   ],
   openai: [
     { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
@@ -101,6 +102,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   geminiVoice: 'Zephyr', 
   voiceGender: 'female',
   voiceStyle: 'natural',
+  voiceSpeed: 1.0,
   speakerGender: 'neutral',
   recipientGender: 'neutral',
   defaultOutputLang: 'Algerian Dialect (Darija) | الدارجة الجزائرية',
@@ -122,6 +124,7 @@ const TRANSLATIONS = {
     ttsEngine: 'Text-to-Speech Engine',
     voiceGender: 'Voice Gender',
     voiceStyle: 'Voiceover Style',
+    voiceSpeed: 'Voice Speed',
     geminiVoiceStyle: 'Gemini Voice Style',
     female: 'Female (Recommended)',
     male: 'Male',
@@ -167,6 +170,7 @@ const TRANSLATIONS = {
     ttsEngine: 'محرك تحويل النص إلى كلام',
     voiceGender: 'جنس الصوت',
     voiceStyle: 'نمط التعليق الصوتي',
+    voiceSpeed: 'سرعة الصوت',
     geminiVoiceStyle: 'نمط صوت Gemini',
     female: 'أنثى (موصى به)',
     male: 'ذكر',
@@ -698,6 +702,33 @@ export default function App() {
 
     const stopSpeaking = () => setIsSpeaking(false);
 
+    let textToSpeak = text;
+
+    // Vocalize Arabic text for better pronunciation
+    if (isArabicText && apiKeyToUse) {
+      try {
+        const genAI = new GoogleGenAI({ apiKey: apiKeyToUse });
+        const result = await genAI.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: `
+          ACT AS AN ARABIC PHONETICS EXPERT.
+          TASK: Vocalize the following Arabic text (Standard or Dialect) with full diacritics (Harakat) to guide a Text-to-Speech engine for a NATURAL and CLEAR pronunciation.
+          TEXT: ${text}
+          RULES: 
+          1. Provide full Tashkeel (Fatha, Damma, Kasra, Shadda, Sukun).
+          2. If the text is in Algerian Dialect (Darija), preserve the dialectal pronunciation but use Harakat to represent it accurately.
+          3. Ensure the flow is natural and the pronunciation is authentic.
+          4. OUTPUT ONLY THE VOCALIZED TEXT. NO INTRO OR OUTRO.
+        `});
+        const vocalized = (result.text || '').trim();
+        if (vocalized && vocalized.length > 0) {
+          textToSpeak = vocalized;
+        }
+      } catch (err) {
+        console.warn('Vocalization failed, using original text:', err);
+      }
+    }
+
     // 1. Try Puter TTS (Free & High Quality)
     if (settings.ttsProvider === 'puter') {
       const puter = (window as any).puter;
@@ -707,8 +738,8 @@ export default function App() {
         try {
           const langMap: Record<string, string> = {
             'English': 'en-US',
-            'Arabic (Standard)': 'arb',
-            'Algerian Dialect (Darija)': 'arb',
+            'Arabic (Standard)': 'ar-AE',
+            'Algerian Dialect (Darija)': 'ar-AE',
             'French': 'fr-FR',
             'Spanish': 'es-ES',
             'German': 'de-DE',
@@ -721,21 +752,27 @@ export default function App() {
           };
 
           const cleanTarget = targetLang.split(' | ')[0];
-          const langCode = isArabicText ? 'arb' : (langMap[cleanTarget] || 'en-US');
+          const langCode = isArabicText ? 'ar-AE' : (langMap[cleanTarget] || 'en-US');
           
           console.log('Calling puter.ai.txt2speech with langCode:', langCode);
           
           let audio;
           try {
-            audio = await puter.ai.txt2speech(text, langCode);
+            audio = await puter.ai.txt2speech(textToSpeak, langCode);
           } catch (e) {
             console.warn('Puter TTS with langCode failed, trying without:', e);
-            audio = await puter.ai.txt2speech(text);
+            audio = await puter.ai.txt2speech(textToSpeak);
           }
           
           if (audio) {
             console.log('Puter audio object received:', audio);
             currentAudioRef.current = audio;
+            
+            // Apply speed if supported (Puter returns an HTMLAudioElement)
+            if (audio instanceof HTMLAudioElement) {
+              audio.playbackRate = settings.voiceSpeed;
+            }
+
             audio.onended = () => {
               console.log('Puter audio ended');
               stopSpeaking();
@@ -745,8 +782,8 @@ export default function App() {
               stopSpeaking();
               currentAudioRef.current = null;
               // Fallback
-              if (apiKeyToUse) handleGeminiTTS(text, apiKeyToUse, isArabicText, stopSpeaking);
-              else handleWebSpeechTTS(text, isArabicText, stopSpeaking);
+              if (apiKeyToUse) handleGeminiTTS(textToSpeak, apiKeyToUse, isArabicText, stopSpeaking);
+              else handleWebSpeechTTS(textToSpeak, isArabicText, stopSpeaking);
             };
             
             console.log('Playing Puter audio...');
@@ -755,8 +792,8 @@ export default function App() {
               playPromise.catch(err => {
                 console.error('Puter audio.play() failed:', err);
                 // Fallback if play() fails (e.g. autoplay block)
-                if (apiKeyToUse) handleGeminiTTS(text, apiKeyToUse, isArabicText, stopSpeaking);
-                else handleWebSpeechTTS(text, isArabicText, stopSpeaking);
+                if (apiKeyToUse) handleGeminiTTS(textToSpeak, apiKeyToUse, isArabicText, stopSpeaking);
+                else handleWebSpeechTTS(textToSpeak, isArabicText, stopSpeaking);
               });
             }
             return; // Success
@@ -773,12 +810,12 @@ export default function App() {
 
     // 2. Try Gemini TTS
     if ((settings.ttsProvider === 'gemini' || settings.ttsProvider === 'puter') && apiKeyToUse) {
-      const success = await handleGeminiTTS(text, apiKeyToUse, isArabicText, stopSpeaking);
+      const success = await handleGeminiTTS(textToSpeak, apiKeyToUse, isArabicText, stopSpeaking);
       if (success) return;
     }
 
     // 3. Fallback to Web Speech API
-    handleWebSpeechTTS(text, isArabicText, stopSpeaking);
+    handleWebSpeechTTS(textToSpeak, isArabicText, stopSpeaking);
   };
 
   const handleGeminiTTS = async (text: string, apiKey: string, isArabic: boolean, onEnd: () => void): Promise<boolean> => {
@@ -790,8 +827,12 @@ export default function App() {
         ? "Read this text like a professional voiceover artist or a storyteller. Use dramatic pauses, clear articulation, and deep emotion."
         : "Read this text naturally and conversationally, like a real person talking to a friend.";
 
+      const isDarija = targetLang.includes('Algerian Dialect');
+
       const prompt = isArabic 
-        ? `Act as a native Algerian speaker from the heart of Algiers. ${styleInstruction} Read this text in the Algerian Dialect (Darija) with the authentic local accent, intonation, and soul. Use the correct pronunciation for letters like 'q' (often pronounced as 'g' or 'q' depending on the word) and 'j'. Make it sound 100% Algerian: ${text}`
+        ? (isDarija 
+            ? `Act as a native Algerian speaker from the heart of Algiers. ${styleInstruction} Read this text in the Algerian Dialect (Darija) with the authentic local accent, intonation, and soul. Use the correct pronunciation for letters like 'q' (often pronounced as 'g' or 'q' depending on the word) and 'j'. Make it sound 100% Algerian: ${text}`
+            : `Act as a professional Arabic voiceover artist. ${styleInstruction} Read this text in Modern Standard Arabic (Fusha) with perfect Tajweed and clear pronunciation of all vowels and diacritics. Ensure the tone is formal and elegant: ${text}`)
         : `${styleInstruction} Read this naturally in ${targetLang}: ${text}`;
 
       const response = await genAI.models.generateContent({
@@ -845,6 +886,7 @@ export default function App() {
           await audioContext.resume();
         }
         
+        source.playbackRate.value = settings.voiceSpeed;
         source.start();
         return true;
       }
@@ -878,7 +920,7 @@ export default function App() {
                    || voices.find(v => v.lang.startsWith(targetLangCode));
 
     if (bestVoice) utterance.voice = bestVoice;
-    utterance.rate = 0.9;
+    utterance.rate = settings.voiceSpeed;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = onEnd;
     utterance.onerror = onEnd;
@@ -1647,6 +1689,22 @@ export default function App() {
                       {t.male}
                     </button>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t.voiceSpeed}</label>
+                    <span className="text-xs font-bold text-blue-600">{settings.voiceSpeed.toFixed(1)}x</span>
+                  </div>
+                  <input 
+                    type="range"
+                    min="0.5"
+                    max="1.5"
+                    step="0.1"
+                    value={settings.voiceSpeed}
+                    onChange={(e) => setSettings({ ...settings, voiceSpeed: parseFloat(e.target.value) })}
+                    className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
                 </div>
 
                 <div className="space-y-2">
