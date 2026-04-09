@@ -742,8 +742,8 @@ export default function App() {
         try {
           const langMap: Record<string, string> = {
             'English': 'en-US',
-            'Arabic (Standard)': 'arb',
-            'Algerian Dialect (Darija)': 'arb',
+            'Arabic (Standard)': 'ar-AE',
+            'Algerian Dialect (Darija)': 'ar-AE',
             'French': 'fr-FR',
             'Spanish': 'es-ES',
             'German': 'de-DE',
@@ -756,7 +756,7 @@ export default function App() {
           };
 
           const cleanTarget = targetLang.split(' | ')[0];
-          const langCode = isArabicText ? 'arb' : (langMap[cleanTarget] || 'en-US');
+          const langCode = isArabicText ? 'ar-AE' : (langMap[cleanTarget] || 'en-US');
           
           console.log('Calling puter.ai.txt2speech with langCode:', langCode);
           
