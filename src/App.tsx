@@ -45,6 +45,7 @@ interface AppSettings {
   voiceGender: VoiceGender;
   voiceStyle: VoiceStyle;
   voiceSpeed: number;
+  voicePitch: number;
   speakerGender: Gender;
   recipientGender: Gender;
   defaultOutputLang: string;
@@ -103,6 +104,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   voiceGender: 'female',
   voiceStyle: 'natural',
   voiceSpeed: 1.0,
+  voicePitch: 1.0,
   speakerGender: 'neutral',
   recipientGender: 'neutral',
   defaultOutputLang: 'Algerian Dialect (Darija) | الدارجة الجزائرية',
@@ -125,6 +127,7 @@ const TRANSLATIONS = {
     voiceGender: 'Voice Gender',
     voiceStyle: 'Voiceover Style',
     voiceSpeed: 'Voice Speed',
+    voicePitch: 'Voice Pitch',
     geminiVoiceStyle: 'Gemini Voice Style',
     female: 'Female (Recommended)',
     male: 'Male',
@@ -171,6 +174,7 @@ const TRANSLATIONS = {
     voiceGender: 'جنس الصوت',
     voiceStyle: 'نمط التعليق الصوتي',
     voiceSpeed: 'سرعة الصوت',
+    voicePitch: 'طبقة الصوت',
     geminiVoiceStyle: 'نمط صوت Gemini',
     female: 'أنثى (موصى به)',
     male: 'ذكر',
@@ -716,8 +720,8 @@ export default function App() {
           TEXT: ${text}
           RULES: 
           1. Provide full Tashkeel (Fatha, Damma, Kasra, Shadda, Sukun).
-          2. If the text is in Algerian Dialect (Darija), preserve the dialectal pronunciation but use Harakat to represent it accurately.
-          3. Ensure the flow is natural and the pronunciation is authentic.
+          2. If the text is in Algerian Dialect (Darija), preserve the dialectal pronunciation but use Harakat to represent it accurately (e.g., use Sukun for consonant clusters common in Darija).
+          3. Ensure the flow is natural and the pronunciation is authentic to the specific dialect or standard Arabic.
           4. OUTPUT ONLY THE VOCALIZED TEXT. NO INTRO OR OUTRO.
         `});
         const vocalized = (result.text || '').trim();
@@ -738,8 +742,8 @@ export default function App() {
         try {
           const langMap: Record<string, string> = {
             'English': 'en-US',
-            'Arabic (Standard)': 'ar-AE',
-            'Algerian Dialect (Darija)': 'ar-AE',
+            'Arabic (Standard)': 'arb',
+            'Algerian Dialect (Darija)': 'arb',
             'French': 'fr-FR',
             'Spanish': 'es-ES',
             'German': 'de-DE',
@@ -752,7 +756,7 @@ export default function App() {
           };
 
           const cleanTarget = targetLang.split(' | ')[0];
-          const langCode = isArabicText ? 'ar-AE' : (langMap[cleanTarget] || 'en-US');
+          const langCode = isArabicText ? 'arb' : (langMap[cleanTarget] || 'en-US');
           
           console.log('Calling puter.ai.txt2speech with langCode:', langCode);
           
@@ -768,9 +772,11 @@ export default function App() {
             console.log('Puter audio object received:', audio);
             currentAudioRef.current = audio;
             
-            // Apply speed if supported (Puter returns an HTMLAudioElement)
+            // Apply speed and pitch if supported (Puter returns an HTMLAudioElement)
             if (audio instanceof HTMLAudioElement) {
               audio.playbackRate = settings.voiceSpeed;
+              // Note: pitch is not directly supported by HTMLAudioElement but we can try preservesPitch
+              (audio as any).preservesPitch = false; 
             }
 
             audio.onended = () => {
@@ -887,6 +893,7 @@ export default function App() {
         }
         
         source.playbackRate.value = settings.voiceSpeed;
+        source.detune.value = (settings.voicePitch - 1) * 1200; // 1200 cents per octave
         source.start();
         return true;
       }
@@ -921,6 +928,7 @@ export default function App() {
 
     if (bestVoice) utterance.voice = bestVoice;
     utterance.rate = settings.voiceSpeed;
+    utterance.pitch = settings.voicePitch;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = onEnd;
     utterance.onerror = onEnd;
@@ -1704,6 +1712,22 @@ export default function App() {
                     value={settings.voiceSpeed}
                     onChange={(e) => setSettings({ ...settings, voiceSpeed: parseFloat(e.target.value) })}
                     className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t.voicePitch}</label>
+                    <span className="text-xs font-bold text-purple-600">{settings.voicePitch.toFixed(1)}x</span>
+                  </div>
+                  <input 
+                    type="range"
+                    min="0.5"
+                    max="1.5"
+                    step="0.1"
+                    value={settings.voicePitch}
+                    onChange={(e) => setSettings({ ...settings, voicePitch: parseFloat(e.target.value) })}
+                    className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-600"
                   />
                 </div>
 
