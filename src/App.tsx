@@ -21,7 +21,8 @@ import {
   Save,
   Globe,
   Cpu,
-  User
+  User,
+  ClipboardPaste
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
@@ -49,6 +50,7 @@ interface AppSettings {
   speakerGender: Gender;
   recipientGender: Gender;
   defaultOutputLang: string;
+  webVoiceName: string;
   theme: 'light' | 'dark';
   uiLanguage: UILanguage;
 }
@@ -99,7 +101,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     xai: 'grok-beta',
     groq: 'llama-3.3-70b-versatile',
   },
-  ttsProvider: 'puter',
+  ttsProvider: 'gemini',
   geminiVoice: 'Zephyr', 
   voiceGender: 'female',
   voiceStyle: 'natural',
@@ -108,6 +110,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   speakerGender: 'neutral',
   recipientGender: 'neutral',
   defaultOutputLang: 'Algerian Dialect (Darija) | الدارجة الجزائرية',
+  webVoiceName: '',
   theme: 'dark',
   uiLanguage: 'en',
 };
@@ -135,6 +138,7 @@ const TRANSLATIONS = {
     storyteller: 'Storyteller',
     resetApp: 'Reset App & Rebuild Cache',
     saveConfig: 'Save Configuration',
+    systemVoice: 'System Voice',
     typePlaceholder: 'Type or paste text here...',
     translate: 'Translate',
     translating: 'Translating to',
@@ -143,6 +147,8 @@ const TRANSLATIONS = {
     copy: 'Copy',
     clear: 'Clear',
     voiceInput: 'Voice Input',
+    paste: 'Paste',
+    pasteError: 'Clipboard access denied. Please use Ctrl+V to paste manually.',
     characters: 'characters',
     auto: 'Auto',
     more: 'More',
@@ -182,6 +188,7 @@ const TRANSLATIONS = {
     storyteller: 'راوي قصص',
     resetApp: 'إعادة ضبط التطبيق وإعادة بناء التخزين المؤقت',
     saveConfig: 'حفظ الإعدادات',
+    systemVoice: 'صوت النظام',
     typePlaceholder: 'اكتب أو الصق النص هنا...',
     translate: 'ترجم',
     translating: 'جاري الترجمة إلى',
@@ -190,6 +197,8 @@ const TRANSLATIONS = {
     copy: 'نسخ',
     clear: 'مسح',
     voiceInput: 'إدخال صوتي',
+    paste: 'لصق',
+    pasteError: 'تم رفض الوصول إلى الحافظة. يرجى استخدام Ctrl+V للصق يدوياً.',
     characters: 'حرف',
     auto: 'تلقائي',
     more: 'المزيد',
@@ -269,6 +278,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [isPuterReady, setIsPuterReady] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [keyStatuses, setKeyStatuses] = useState<Record<APIProvider, 'idle' | 'validating' | 'valid' | 'invalid'>>({
     gemini: 'idle',
     openai: 'idle',
@@ -279,6 +289,30 @@ export default function App() {
 
   // Refs
   const recognitionRef = useRef<any>(null);
+
+  // Web Speech API Voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      setAvailableVoices(voices);
+      
+      // Auto-select a good default if none selected
+      if (voices.length > 0 && !settings.webVoiceName) {
+        const googleArabicVoice = voices.find(v => v.lang.startsWith('ar') && v.name.includes('Google'));
+        const anyArabicVoice = voices.find(v => v.lang.startsWith('ar'));
+        const defaultVoice = googleArabicVoice || anyArabicVoice || voices.find(v => v.lang.startsWith('en')) || voices[0];
+        
+        if (defaultVoice) {
+          saveSettings({ ...settings, webVoiceName: defaultVoice.name });
+        }
+      }
+    };
+
+    loadVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
 
   // Theme effect
   useEffect(() => {
@@ -908,25 +942,29 @@ export default function App() {
     const utterance = new SpeechSynthesisUtterance(text);
     const voices = window.speechSynthesis.getVoices();
     
-    const langMap: Record<string, string> = {
-      'Algerian Dialect (Darija)': 'ar',
-      'Arabic (Standard)': 'ar',
-      'English': 'en',
-      'French': 'fr',
-      'Spanish': 'es',
-      'German': 'de',
-      'Italian': 'it',
-      'Turkish': 'tr',
-    };
+    let selectedVoice = voices.find(v => v.name === settings.webVoiceName);
 
-    const targetLangCode = isArabic ? 'ar' : (langMap[targetLang] || 'en');
-    
-    // Prioritize high-quality Arabic voices if available
-    const bestVoice = voices.find(v => v.lang.startsWith(targetLangCode) && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Premium'))) 
-                   || voices.find(v => v.lang.startsWith(targetLangCode) && v.localService)
-                   || voices.find(v => v.lang.startsWith(targetLangCode));
+    if (!selectedVoice) {
+      const langMap: Record<string, string> = {
+        'Algerian Dialect (Darija)': 'ar',
+        'Arabic (Standard)': 'ar',
+        'English': 'en',
+        'French': 'fr',
+        'Spanish': 'es',
+        'German': 'de',
+        'Italian': 'it',
+        'Turkish': 'tr',
+      };
 
-    if (bestVoice) utterance.voice = bestVoice;
+      const targetLangCode = isArabic ? 'ar' : (langMap[targetLang] || 'en');
+      
+      // Prioritize high-quality Arabic voices if available
+      selectedVoice = voices.find(v => v.lang.startsWith(targetLangCode) && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Premium'))) 
+                     || voices.find(v => v.lang.startsWith(targetLangCode) && v.localService)
+                     || voices.find(v => v.lang.startsWith(targetLangCode));
+    }
+
+    if (selectedVoice) utterance.voice = selectedVoice;
     utterance.rate = settings.voiceSpeed;
     utterance.pitch = settings.voicePitch;
     utterance.onstart = () => setIsSpeaking(true);
@@ -948,6 +986,38 @@ export default function App() {
     setInputText('');
     setOutputText('');
     setError(null);
+  };
+
+  // Paste
+  const handlePaste = async () => {
+    try {
+      // Check if permission is granted if the API is available
+      if (navigator.permissions && (navigator.permissions as any).query) {
+        try {
+          const permission = await navigator.permissions.query({ name: 'clipboard-read' as any });
+          if (permission.state === 'denied') {
+            setError(t.pasteError);
+            return;
+          }
+        } catch (e) {
+          // Ignore permission query errors
+        }
+      }
+
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setInputText(text);
+        setError(null);
+      }
+    } catch (err: any) {
+      console.error('Failed to read clipboard:', err);
+      // If it's a permission error or blocked policy, show a user-friendly message
+      if (err.name === 'NotAllowedError' || err.message?.includes('permissions policy')) {
+        setError(t.pasteError);
+      } else {
+        setError(`Failed to paste: ${err.message || 'Unknown error'}`);
+      }
+    }
   };
 
   // API Key Validation
@@ -1202,6 +1272,13 @@ export default function App() {
                       </span>
                     </div>
                   )}
+                  <button 
+                    onClick={handlePaste}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    title={t.paste}
+                  >
+                    <ClipboardPaste size={18} />
+                  </button>
                   <button 
                     onClick={toggleRecording}
                     className={cn(
@@ -1620,16 +1697,57 @@ export default function App() {
                     <select 
                       value={settings.ttsProvider}
                       onChange={(e) => setSettings({ ...settings, ttsProvider: e.target.value as TTSProvider })}
-                      className="w-full p-3 bg-gray-50 dark:bg-[#0F1115] border border-gray-200 dark:border-gray-800 rounded-xl outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                      className={cn(
+                        "w-full p-3 border rounded-xl outline-none appearance-none cursor-pointer font-medium transition-all",
+                        settings.ttsProvider === 'gemini' 
+                          ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.1)]" 
+                          : "bg-gray-50 dark:bg-[#0F1115] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 focus:border-blue-500"
+                      )}
                     >
-                      <option value="puter">Puter (Free & Natural)</option>
-                      <option value="gemini">Google Gemini (High Quality)</option>
-                      <option value="web">Web Speech API (Browser Default)</option>
+                      <option value="gemini">✨ Google Gemini AI (Premium Quality)</option>
+                      <option value="web">🔵 Google Web Speech (Free)</option>
+                      <option value="puter">🟢 Puter AI (Natural & Free)</option>
                     </select>
-                    <div className="absolute right-4 pointer-events-none text-gray-400">
+                    <div className={cn(
+                      "absolute right-4 pointer-events-none",
+                      settings.ttsProvider === 'gemini' ? "text-blue-500" : "text-gray-400"
+                    )}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </div>
                   </div>
+
+                  {settings.ttsProvider === 'web' && availableVoices.length > 0 && (
+                    <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">{t.systemVoice}</label>
+                      <div className="relative flex items-center">
+                        <select 
+                          value={settings.webVoiceName}
+                          onChange={(e) => setSettings({ ...settings, webVoiceName: e.target.value })}
+                          className="w-full p-3 bg-gray-50 dark:bg-[#0F1115] border border-gray-200 dark:border-gray-800 rounded-xl outline-none focus:border-blue-500 appearance-none cursor-pointer text-sm"
+                        >
+                          {availableVoices
+                            .sort((a, b) => {
+                              // Sort Google voices to the top
+                              const aIsGoogle = a.name.includes('Google');
+                              const bIsGoogle = b.name.includes('Google');
+                              if (aIsGoogle && !bIsGoogle) return -1;
+                              if (!aIsGoogle && bIsGoogle) return 1;
+                              return a.lang.localeCompare(b.lang);
+                            })
+                            .map((voice) => (
+                              <option key={voice.name} value={voice.name}>
+                                {voice.name.includes('Google') ? '🔵 ' : ''}
+                                {voice.name} ({voice.lang})
+                              </option>
+                            ))
+                          }
+                        </select>
+                        <div className="absolute right-4 pointer-events-none text-gray-400">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
