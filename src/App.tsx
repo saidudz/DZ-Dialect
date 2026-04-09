@@ -20,7 +20,8 @@ import {
   X,
   Save,
   Globe,
-  Cpu
+  Cpu,
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
@@ -33,6 +34,7 @@ type GeminiVoice = 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr';
 type VoiceGender = 'male' | 'female';
 type VoiceStyle = 'natural' | 'storyteller';
 type UILanguage = 'en' | 'ar';
+type Gender = 'neutral' | 'male' | 'female';
 
 interface AppSettings {
   apiKeys: Record<APIProvider, string>;
@@ -42,6 +44,8 @@ interface AppSettings {
   geminiVoice: GeminiVoice;
   voiceGender: VoiceGender;
   voiceStyle: VoiceStyle;
+  speakerGender: Gender;
+  recipientGender: Gender;
   defaultOutputLang: string;
   theme: 'light' | 'dark';
   uiLanguage: UILanguage;
@@ -97,6 +101,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   geminiVoice: 'Zephyr', 
   voiceGender: 'female',
   voiceStyle: 'natural',
+  speakerGender: 'neutral',
+  recipientGender: 'neutral',
   defaultOutputLang: 'Algerian Dialect (Darija) | الدارجة الجزائرية',
   theme: 'dark',
   uiLanguage: 'en',
@@ -141,6 +147,12 @@ const TRANSLATIONS = {
     retry: 'Retry',
     stop: 'Stop',
     listen: 'Listen Voiceover',
+    translationDirection: 'Translation Direction (Gender)',
+    speaker: 'Speaker',
+    recipient: 'Recipient',
+    neutral: 'Neutral',
+    man: 'Man',
+    woman: 'Woman',
   },
   ar: {
     service: 'الخدمة',
@@ -180,6 +192,12 @@ const TRANSLATIONS = {
     retry: 'إعادة المحاولة',
     stop: 'إيقاف',
     listen: 'استمع للتعليق الصوتي',
+    translationDirection: 'اتجاه الترجمة (الجنس)',
+    speaker: 'المتحدث',
+    recipient: 'المستلم',
+    neutral: 'محايد',
+    man: 'رجل',
+    woman: 'امرأة',
   }
 };
 
@@ -402,6 +420,9 @@ export default function App() {
     setIsTranslating(true);
     setError(null);
 
+    const cleanSource = sourceLang.split(' | ')[0];
+    const cleanTarget = targetLang.split(' | ')[0];
+
     const isTargetDarija = targetLang.includes('Algerian Dialect');
     const isTargetArabic = targetLang.includes('Arabic (Standard)');
     const isTargetEnglish = targetLang.includes('English');
@@ -416,36 +437,50 @@ export default function App() {
         let systemPrompt = '';
         
         if (isTargetDarija) {
-          systemPrompt = `You are an expert Algerian linguist. Translate from ${sourceLang} to Algerian Darija.
-          STRICT RULES:
-          - Output ONLY the translated sentence in Arabic script.
-          - Use authentic Algerian Darija as spoken in daily life.
-          - Incorporate natural loanwords from French/Spanish/Berber but write them in Arabic script (e.g., 'طوموبيل' for car, 'كوزينة' for kitchen, 'بزاف' for a lot).
-          - Ensure the grammar follows Algerian dialect rules (e.g., using 'راني' for 'I am', 'شكون' for 'who', 'واش' for 'what').
-          - Avoid Modern Standard Arabic (Fusha) completely.
-          - Capture the specific tone and cultural nuance of Algeria.`;
+          systemPrompt = `ACT AS A TRANSLATION ENGINE. 
+          TARGET: Algerian Darija (Arabic Script).
+          SOURCE: ${cleanSource}.
+
+          CONTEXT: Algerian Darija is a unique dialect distinct from Modern Standard Arabic. It incorporates French, Berber, and Spanish influences.
+          
+          GENDER CONTEXT (CRITICAL):
+          - RECIPIENT is ${settings.recipientGender === 'male' ? 'MALE (address them as a man)' : settings.recipientGender === 'female' ? 'FEMALE (address them as a woman)' : 'NEUTRAL'}.
+
+          EXAMPLES:
+          - "How are you?" (to Male) -> "واش راك؟"
+          - "How are you?" (to Female) -> "واش راكي؟"
+
+          RULES:
+          1. OUTPUT ONLY THE TRANSLATION. 
+          2. NO CONVERSATION. NO INTRODUCTIONS. NO EXPLANATIONS.
+          3. USE AUTHENTIC ALGERIAN VOCABULARY (e.g., بزاف، واش، شكون، راني، حنا، نتوما، درك، برك).
+          4. USE FRENCH LOANWORDS IN ARABIC SCRIPT (e.g., طوموبيل، كوزينة، بوسط، فاك، ريستو) IF THEY ARE THE STANDARD IN DAILY SPEECH.
+          5. USE ALGERIAN GRAMMAR (e.g., the suffix 'ش' for negation, 'راني' for present continuous).
+          6. AVOID MODERN STANDARD ARABIC (FUSHA) WORDS UNLESS THEY ARE USED IN DARIJA.
+          7. MAINTAIN THE TONE (FORMAL/INFORMAL) OF THE SOURCE.
+          8. CONJUGATE ALL VERBS, ADJECTIVES, AND PRONOUNS STATED ABOVE ACCORDING TO THE RECIPIENT GENDER (${settings.recipientGender}).`;
         } else if (isTargetArabic) {
-          systemPrompt = `You are an expert translator. Translate from ${sourceLang} to Modern Standard Arabic (Fusha).
-          STRICT RULES:
-          - Use high-quality, formal, and grammatically correct Modern Standard Arabic.
-          - Output ONLY the translated sentence in Arabic script.`;
+          systemPrompt = `ACT AS A TRANSLATION ENGINE.
+          TARGET: Modern Standard Arabic (Fusha).
+          SOURCE: ${cleanSource}.
+          GENDER CONTEXT: Recipient is ${settings.recipientGender}.
+          RULES: OUTPUT ONLY THE TRANSLATION. NO CONVERSATION. CONJUGATE CORRECTLY FOR RECIPIENT GENDER.`;
         } else if (isTargetEnglish) {
-          systemPrompt = `You are an expert translator. Translate from ${sourceLang} to natural, fluent English.
-          STRICT RULES:
-          - Use natural-sounding, high-quality English.
-          - Output ONLY the translated sentence.`;
+          systemPrompt = `ACT AS A TRANSLATION ENGINE.
+          TARGET: Fluent English.
+          SOURCE: ${cleanSource}.
+          RULES: OUTPUT ONLY THE TRANSLATION. NO CONVERSATION.`;
         } else {
-          systemPrompt = `You are an expert translator. Translate from ${sourceLang} to ${targetLang}.
-          STRICT RULES:
-          - Output ONLY the translated sentence.`;
+          systemPrompt = `ACT AS A TRANSLATION ENGINE.
+          TARGET: ${cleanTarget}.
+          SOURCE: ${cleanSource}.
+          RULES: OUTPUT ONLY THE TRANSLATION. NO CONVERSATION.`;
         }
 
         systemPrompt += `
-        - Exactly ONE sentence.
-        - NO explanations, NO lists, NO alternatives.
-        - NO formatting (no markdown, no bold, no stars).
-        - NO punctuation at the end (no dots, no commas).
-        - No introductory text.`;
+        STRICT: NO introductory text like "Sure" or "Here is". 
+        STRICT: NO markdown formatting.
+        STRICT: NO alternatives or lists.`;
 
         if (settings.provider === 'gemini') {
           const genAI = new GoogleGenAI({ apiKey: apiKeyToUse });
@@ -523,7 +558,7 @@ export default function App() {
 
   // Swap Languages
   const handleSwap = () => {
-    const temp = sourceLang === 'Auto Detect' ? 'English' : sourceLang;
+    const temp = sourceLang === 'Auto Detect' ? 'English | الإنجليزية' : sourceLang;
     setSourceLang(targetLang);
     setTargetLang(temp);
     setInputText(outputText);
@@ -665,20 +700,31 @@ export default function App() {
       
       if (puter && puter.ai && puter.ai.txt2speech) {
         try {
-          // 'Zeina' is the high-quality Arabic female voice in Amazon Polly (used by Puter)
-          // 'Maged' is the high-quality Arabic male voice
-          const voice = isArabicText 
-            ? (settings.voiceGender === 'female' ? 'Zeina' : 'Maged')
-            : undefined;
+          const langMap: Record<string, string> = {
+            'English': 'en-US',
+            'Arabic (Standard)': 'arb',
+            'Algerian Dialect (Darija)': 'arb',
+            'French': 'fr-FR',
+            'Spanish': 'es-ES',
+            'German': 'de-DE',
+            'Italian': 'it-IT',
+            'Turkish': 'tr-TR',
+            'Chinese': 'cmn-CN',
+            'Japanese': 'ja-JP',
+            'Russian': 'ru-RU',
+            'Portuguese': 'pt-PT',
+          };
+
+          const cleanTarget = targetLang.split(' | ')[0];
+          const langCode = isArabicText ? 'arb' : (langMap[cleanTarget] || 'en-US');
           
-          console.log('Calling puter.ai.txt2speech with voice:', voice);
+          console.log('Calling puter.ai.txt2speech with langCode:', langCode);
           
           let audio;
           try {
-            // Try with voice first
-            audio = await puter.ai.txt2speech(text, voice);
+            audio = await puter.ai.txt2speech(text, langCode);
           } catch (e) {
-            console.warn('Puter TTS with voice failed, trying without voice:', e);
+            console.warn('Puter TTS with langCode failed, trying without:', e);
             audio = await puter.ai.txt2speech(text);
           }
           
@@ -1093,6 +1139,14 @@ export default function App() {
                 ))}
               </div>
               <div className="flex items-center gap-1">
+                  {settings.recipientGender !== 'neutral' && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 mr-1">
+                      <User size={12} className="text-blue-600" />
+                      <span className="text-[10px] font-bold text-blue-600 uppercase">
+                        TO: {settings.recipientGender === 'male' ? 'M' : 'F'}
+                      </span>
+                    </div>
+                  )}
                   <button 
                     onClick={toggleRecording}
                     className={cn(
@@ -1519,6 +1573,35 @@ export default function App() {
                     </select>
                     <div className="absolute right-4 pointer-events-none text-gray-400">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
+                  <label className="text-sm font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                    <ArrowRightLeft size={16} />
+                    {t.translationDirection}
+                  </label>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-gray-500">{t.recipient}</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['neutral', 'male', 'female'] as Gender[]).map((g) => (
+                          <button
+                            key={`recipient-${g}`}
+                            onClick={() => setSettings({ ...settings, recipientGender: g })}
+                            className={cn(
+                              "py-2 px-1 rounded-xl border text-[10px] font-bold transition-all",
+                              settings.recipientGender === g
+                                ? "bg-[#006233] border-[#006233] text-white shadow-md"
+                                : "bg-white dark:bg-[#0F1115] border-gray-200 dark:border-gray-800 text-gray-500"
+                            )}
+                          >
+                            {g === 'neutral' ? t.neutral : g === 'male' ? t.man : t.woman}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
