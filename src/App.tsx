@@ -63,9 +63,9 @@ const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string; isFree?: 
   ],
   openrouter: [
     { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash' },
-    { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)', isFree: true },
+    { id: 'google/gemini-2.0-pro-exp-02-05:free', name: 'Gemini 2.0 Pro Exp (Free)', isFree: true },
+    { id: 'google/gemini-2.0-flash-lite-preview-02-05:free', name: 'Gemini 2.0 Flash Lite (Free)', isFree: true },
     { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (Free)', isFree: true },
-    { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', isFree: true },
     { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3' },
     { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1' },
     { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
@@ -238,6 +238,11 @@ export default function App() {
           };
           delete parsed.apiKey;
         }
+        // Migration for broken OpenRouter model
+        if (parsed.selectedModels?.openrouter === 'google/gemini-2.0-flash-exp:free') {
+          parsed.selectedModels.openrouter = 'google/gemini-2.0-flash-001';
+        }
+
         return { 
           ...DEFAULT_SETTINGS, 
           ...parsed,
