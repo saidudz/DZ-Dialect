@@ -32,6 +32,7 @@ type TTSProvider = 'gemini' | 'puter' | 'web';
 type GeminiVoice = 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr';
 type VoiceGender = 'male' | 'female';
 type VoiceStyle = 'natural' | 'storyteller';
+type UILanguage = 'en' | 'ar';
 
 interface AppSettings {
   apiKeys: Record<APIProvider, string>;
@@ -43,6 +44,7 @@ interface AppSettings {
   voiceStyle: VoiceStyle;
   defaultOutputLang: string;
   theme: 'light' | 'dark';
+  uiLanguage: UILanguage;
 }
 
 const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string; isFree?: boolean }[]> = {
@@ -95,19 +97,105 @@ const DEFAULT_SETTINGS: AppSettings = {
   geminiVoice: 'Zephyr', 
   voiceGender: 'female',
   voiceStyle: 'natural',
-  defaultOutputLang: 'Algerian Dialect (Darija)',
+  defaultOutputLang: 'Algerian Dialect (Darija) | الدارجة الجزائرية',
   theme: 'dark',
+  uiLanguage: 'en',
+};
+
+const TRANSLATIONS = {
+  en: {
+    service: 'Service',
+    model: 'Model',
+    settings: 'Settings',
+    appSettings: 'App Settings',
+    activeProvider: 'Active API Provider',
+    smartDetection: 'Smart Key Detection',
+    smartDetectionPlaceholder: 'Paste any API key here to auto-detect...',
+    smartDetectionHint: 'Paste a key to automatically set the provider and key.',
+    keysStoredLocally: 'Keys are stored locally on your device.',
+    ttsEngine: 'Text-to-Speech Engine',
+    voiceGender: 'Voice Gender',
+    voiceStyle: 'Voiceover Style',
+    geminiVoiceStyle: 'Gemini Voice Style',
+    female: 'Female (Recommended)',
+    male: 'Male',
+    natural: 'Natural',
+    storyteller: 'Storyteller',
+    resetApp: 'Reset App & Rebuild Cache',
+    saveConfig: 'Save Configuration',
+    typePlaceholder: 'Type or paste text here...',
+    translate: 'Translate',
+    translating: 'Translating to',
+    translationPlaceholder: 'Translation will appear here...',
+    voiceover: 'Voiceover',
+    copy: 'Copy',
+    clear: 'Clear',
+    voiceInput: 'Voice Input',
+    characters: 'characters',
+    auto: 'Auto',
+    more: 'More',
+    testVoice: 'Test Voice',
+    stopTest: 'Stop Test',
+    initializing: 'Initializing...',
+    puterReady: 'Puter Ready',
+    retry: 'Retry',
+    stop: 'Stop',
+    listen: 'Listen Voiceover',
+  },
+  ar: {
+    service: 'الخدمة',
+    model: 'النموذج',
+    settings: 'الإعدادات',
+    appSettings: 'إعدادات التطبيق',
+    activeProvider: 'مزود الخدمة النشط',
+    smartDetection: 'الكشف الذكي عن المفتاح',
+    smartDetectionPlaceholder: 'الصق أي مفتاح API هنا للكشف التلقائي...',
+    smartDetectionHint: 'الصق المفتاح لضبط المزود والمفتاح تلقائياً.',
+    keysStoredLocally: 'يتم تخزين المفاتيح محلياً على جهازك.',
+    ttsEngine: 'محرك تحويل النص إلى كلام',
+    voiceGender: 'جنس الصوت',
+    voiceStyle: 'نمط التعليق الصوتي',
+    geminiVoiceStyle: 'نمط صوت Gemini',
+    female: 'أنثى (موصى به)',
+    male: 'ذكر',
+    natural: 'طبيعي',
+    storyteller: 'راوي قصص',
+    resetApp: 'إعادة ضبط التطبيق وإعادة بناء التخزين المؤقت',
+    saveConfig: 'حفظ الإعدادات',
+    typePlaceholder: 'اكتب أو الصق النص هنا...',
+    translate: 'ترجم',
+    translating: 'جاري الترجمة إلى',
+    translationPlaceholder: 'ستظهر الترجمة هنا...',
+    voiceover: 'تعليق صوتي',
+    copy: 'نسخ',
+    clear: 'مسح',
+    voiceInput: 'إدخال صوتي',
+    characters: 'حرف',
+    auto: 'تلقائي',
+    more: 'المزيد',
+    testVoice: 'تجربة الصوت',
+    stopTest: 'إيقاف التجربة',
+    initializing: 'جاري التحميل...',
+    puterReady: 'Puter جاهز',
+    retry: 'إعادة المحاولة',
+    stop: 'إيقاف',
+    listen: 'استمع للتعليق الصوتي',
+  }
 };
 
 const LANGUAGES = [
-  'Algerian Dialect (Darija)',
-  'Arabic (Standard)',
-  'English',
-  'French',
-  'Spanish',
-  'German',
-  'Italian',
-  'Turkish',
+  'English | الإنجليزية',
+  'Arabic (Standard) | العربية الفصحى',
+  'Algerian Dialect (Darija) | الدارجة الجزائرية',
+  'French | الفرنسية',
+  'Spanish | الإسبانية',
+  'German | الألمانية',
+  'Italian | الإيطالية',
+  'Turkish | التركية',
+  'Chinese | الصينية',
+  'Japanese | اليابانية',
+  'Russian | الروسية',
+  'Portuguese | البرتغالية',
 ];
 
 export default function App() {
@@ -116,7 +204,7 @@ export default function App() {
   const [outputText, setOutputText] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [sourceLang, setSourceLang] = useState('Auto Detect');
-  const [targetLang, setTargetLang] = useState('Algerian Dialect (Darija)');
+  const [targetLang, setTargetLang] = useState('Algerian Dialect (Darija) | الدارجة الجزائرية');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
@@ -314,7 +402,10 @@ export default function App() {
     setIsTranslating(true);
     setError(null);
 
-    const isTargetDarija = targetLang === 'Algerian Dialect (Darija)';
+    const isTargetDarija = targetLang.includes('Algerian Dialect');
+    const isTargetArabic = targetLang.includes('Arabic (Standard)');
+    const isTargetEnglish = targetLang.includes('English');
+
     let attempts = 0;
     const maxAttempts = 3;
     let finalOutput = '';
@@ -322,21 +413,38 @@ export default function App() {
     try {
       while (attempts < maxAttempts) {
         let text = '';
-        const systemPrompt = `You are an expert Algerian linguist. Translate from ${sourceLang} to ${targetLang}.
-        STRICT RULES:
-        - Output ONLY the translated sentence.
+        let systemPrompt = '';
+        
+        if (isTargetDarija) {
+          systemPrompt = `You are an expert Algerian linguist. Translate from ${sourceLang} to Algerian Darija.
+          STRICT RULES:
+          - Output ONLY the translated sentence in Arabic script.
+          - Use authentic Algerian Darija as spoken in daily life.
+          - Incorporate natural loanwords from French/Spanish/Berber but write them in Arabic script (e.g., 'طوموبيل' for car, 'كوزينة' for kitchen, 'بزاف' for a lot).
+          - Ensure the grammar follows Algerian dialect rules (e.g., using 'راني' for 'I am', 'شكون' for 'who', 'واش' for 'what').
+          - Avoid Modern Standard Arabic (Fusha) completely.
+          - Capture the specific tone and cultural nuance of Algeria.`;
+        } else if (isTargetArabic) {
+          systemPrompt = `You are an expert translator. Translate from ${sourceLang} to Modern Standard Arabic (Fusha).
+          STRICT RULES:
+          - Use high-quality, formal, and grammatically correct Modern Standard Arabic.
+          - Output ONLY the translated sentence in Arabic script.`;
+        } else if (isTargetEnglish) {
+          systemPrompt = `You are an expert translator. Translate from ${sourceLang} to natural, fluent English.
+          STRICT RULES:
+          - Use natural-sounding, high-quality English.
+          - Output ONLY the translated sentence.`;
+        } else {
+          systemPrompt = `You are an expert translator. Translate from ${sourceLang} to ${targetLang}.
+          STRICT RULES:
+          - Output ONLY the translated sentence.`;
+        }
+
+        systemPrompt += `
         - Exactly ONE sentence.
         - NO explanations, NO lists, NO alternatives.
         - NO formatting (no markdown, no bold, no stars).
         - NO punctuation at the end (no dots, no commas).
-        ${isTargetDarija ? `
-        - Use ONLY Arabic script (no Latin letters, no French/English letters, no Arabizi).
-        - Use authentic Algerian Darija (Algerian Dialect) as spoken in daily life.
-        - Incorporate natural loanwords from French/Spanish/Berber but write them in Arabic script (e.g., 'طوموبيل' for car, 'كوزينة' for kitchen, 'بزاف' for a lot).
-        - Ensure the grammar follows Algerian dialect rules (e.g., using 'راني' for 'I am', 'شكون' for 'who', 'واش' for 'what').
-        - Avoid Modern Standard Arabic (Fusha) completely.
-        - Capture the specific tone and cultural nuance of Algeria.
-        ` : ''}
         - No introductory text.`;
 
         if (settings.provider === 'gemini') {
@@ -467,7 +575,20 @@ export default function App() {
       }
 
       const recognition = new SpeechRecognition();
-      recognition.lang = 'ar-DZ'; // Default to Arabic/Algerian
+      
+      // Set language based on source
+      if (sourceLang.includes('English')) {
+        recognition.lang = 'en-US';
+      } else if (sourceLang.includes('Arabic (Standard)')) {
+        recognition.lang = 'ar-SA';
+      } else if (sourceLang.includes('French')) {
+        recognition.lang = 'fr-FR';
+      } else if (sourceLang.includes('Spanish')) {
+        recognition.lang = 'es-ES';
+      } else {
+        recognition.lang = 'ar-DZ';
+      }
+      
       recognition.continuous = false;
       recognition.interimResults = false;
 
@@ -791,8 +912,13 @@ export default function App() {
     }
   }, [isSettingsOpen]);
 
+  const t = TRANSLATIONS[settings.uiLanguage];
+
   return (
-    <div className="min-h-screen bg-transparent text-[#1A1C1E] dark:text-[#E2E2E6] transition-colors duration-300 font-sans selection:bg-blue-500/30">
+    <div 
+      className="min-h-screen bg-transparent text-[#1A1C1E] dark:text-[#E2E2E6] transition-colors duration-300 font-sans selection:bg-blue-500/30"
+      dir={settings.uiLanguage === 'ar' ? 'rtl' : 'ltr'}
+    >
       <div className="mesh-bg" />
       {/* Top Bar */}
       <header className="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 sticky top-0 bg-white/80 dark:bg-[#0F1115]/80 backdrop-blur-md z-40">
@@ -804,19 +930,18 @@ export default function App() {
               className="h-10 w-auto object-contain"
               referrerPolicy="no-referrer"
             />
-            <h1 className="text-xl font-black tracking-tighter flex items-center leading-none">
-              <span className="text-[#006233]">DZ</span>
-              <span className="mx-1 text-gray-300 dark:text-gray-600 font-light">|</span>
-              <span className="text-[#D21034]">Dialect</span>
-            </h1>
           </div>
         </div>
 
         <div className="hidden md:flex items-center gap-2">
           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
-            <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+            <div className={cn(
+              "px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5",
+              settings.uiLanguage === 'ar' ? "border-l" : "border-r",
+              "border-gray-200 dark:border-gray-700"
+            )}>
               <Globe size={14} />
-              Service
+              {t.service}
             </div>
             <select 
               value={settings.provider}
@@ -833,9 +958,13 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
-            <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+            <div className={cn(
+              "px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5",
+              settings.uiLanguage === 'ar' ? "border-l" : "border-r",
+              "border-gray-200 dark:border-gray-700"
+            )}>
               <Cpu size={14} />
-              Model
+              {t.model}
             </div>
             <select 
               value={settings.selectedModels[settings.provider]}
@@ -859,17 +988,30 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button 
-            onClick={toggleTheme}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            title={settings.theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {settings.theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+            <button 
+              onClick={() => setSettings({ ...settings, uiLanguage: 'en' })}
+              className={cn(
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all",
+                settings.uiLanguage === 'en' ? "bg-blue-500 text-white shadow-sm" : "text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700"
+              )}
+            >
+              EN
+            </button>
+            <button 
+              onClick={() => setSettings({ ...settings, uiLanguage: 'ar' })}
+              className={cn(
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all",
+                settings.uiLanguage === 'ar' ? "bg-blue-500 text-white shadow-sm" : "text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700"
+              )}
+            >
+              AR
+            </button>
+          </div>
           <button 
             onClick={() => setIsSettingsOpen(true)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            title="Settings"
+            title={t.settings}
           >
             <Settings size={20} />
           </button>
@@ -880,9 +1022,13 @@ export default function App() {
         {/* Mobile Selectors */}
         <div className="md:hidden mb-6 flex flex-col gap-3">
           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
-            <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+            <div className={cn(
+              "px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5",
+              settings.uiLanguage === 'ar' ? "border-l" : "border-r",
+              "border-gray-200 dark:border-gray-700"
+            )}>
               <Globe size={14} />
-              Service
+              {t.service}
             </div>
             <select 
               value={settings.provider}
@@ -899,9 +1045,13 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
-            <div className="px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+            <div className={cn(
+              "px-3 py-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5",
+              settings.uiLanguage === 'ar' ? "border-l" : "border-r",
+              "border-gray-200 dark:border-gray-700"
+            )}>
               <Cpu size={14} />
-              Model
+              {t.model}
             </div>
             <select 
               value={settings.selectedModels[settings.provider]}
@@ -928,39 +1078,38 @@ export default function App() {
           {/* Input Section */}
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between bg-white dark:bg-[#1A1D23] p-2 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-              <div className="relative flex items-center">
-                <select 
-                  value={sourceLang}
-                  onChange={(e) => setSourceLang(e.target.value)}
-                  className="bg-transparent pl-4 pr-8 py-2 outline-none font-medium cursor-pointer appearance-none hover:text-blue-600 transition-colors"
-                >
-                  <option value="Auto Detect">Auto Detect</option>
-                  {LANGUAGES.map(lang => (
-                    <option key={lang} value={lang} className="dark:bg-[#1A1D23]">{lang}</option>
-                  ))}
-                </select>
-                <div className="absolute right-2 pointer-events-none text-gray-400">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                </div>
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                {['English | الإنجليزية', 'Arabic (Standard) | العربية الفصحى'].map(lang => (
+                  <button 
+                    key={lang}
+                    onClick={() => setSourceLang(lang)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap",
+                      sourceLang === lang ? "bg-blue-500 text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                  >
+                    {lang.split(' | ')[0].split(' ')[0]}
+                  </button>
+                ))}
               </div>
               <div className="flex items-center gap-1">
-                <button 
-                  onClick={toggleRecording}
-                  className={cn(
-                    "p-2 rounded-lg transition-all",
-                    isRecording ? "bg-red-500 text-white animate-pulse" : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                  )}
-                  title="Voice Input"
-                >
-                  <Mic size={18} />
-                </button>
-                <button 
-                  onClick={handleClear}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  title="Clear"
-                >
-                  <Trash2 size={18} />
-                </button>
+                  <button 
+                    onClick={toggleRecording}
+                    className={cn(
+                      "p-2 rounded-lg transition-all",
+                      isRecording ? "bg-red-500 text-white animate-pulse" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                    title={t.voiceInput}
+                  >
+                    <Mic size={18} />
+                  </button>
+                  <button 
+                    onClick={handleClear}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    title={t.clear}
+                  >
+                    <Trash2 size={18} />
+                  </button>
               </div>
             </div>
 
@@ -968,11 +1117,14 @@ export default function App() {
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Type or paste text here..."
+                placeholder={t.typePlaceholder}
                 className="w-full h-64 md:h-80 p-6 bg-white dark:bg-[#1A1D23] rounded-3xl border border-gray-200 dark:border-gray-800 focus:border-[#006233] dark:focus:border-[#00a857] outline-none resize-none text-lg leading-relaxed shadow-sm transition-all"
               />
-              <div className="absolute bottom-4 right-4 text-xs text-gray-400">
-                {inputText.length} characters
+              <div className={cn(
+                "absolute bottom-4 text-xs text-gray-400",
+                settings.uiLanguage === 'ar' ? "left-4" : "right-4"
+              )}>
+                {inputText.length} {t.characters}
               </div>
             </div>
           </section>
@@ -1000,19 +1152,19 @@ export default function App() {
           {/* Output Section */}
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between bg-white dark:bg-[#1A1D23] p-2 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-              <div className="relative flex items-center">
-                <select 
-                  value={targetLang}
-                  onChange={(e) => setTargetLang(e.target.value)}
-                  className="bg-transparent pl-4 pr-8 py-2 outline-none font-medium cursor-pointer appearance-none hover:text-blue-600 transition-colors"
-                >
-                  {LANGUAGES.map(lang => (
-                    <option key={lang} value={lang} className="dark:bg-[#1A1D23]">{lang}</option>
-                  ))}
-                </select>
-                <div className="absolute right-2 pointer-events-none text-gray-400">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                </div>
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                {['Algerian Dialect (Darija) | الدارجة الجزائرية'].map(lang => (
+                  <button 
+                    key={lang}
+                    onClick={() => setTargetLang(lang)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap",
+                      targetLang === lang ? "bg-[#006233] text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                  >
+                    {lang.split(' | ')[0].split(' ')[0]}
+                  </button>
+                ))}
               </div>
               <div className="flex items-center gap-1">
                   <button 
@@ -1026,12 +1178,12 @@ export default function App() {
                     title={isSpeaking ? "Stop" : "Listen Voiceover"}
                   >
                     {isSpeaking ? <Volume2 size={18} className="animate-bounce" /> : <Volume2 size={18} />}
-                    {!isSpeaking && <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">Voiceover</span>}
+                    {!isSpeaking && <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">{t.voiceover}</span>}
                   </button>
                 <button 
                   onClick={handleCopy}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors relative"
-                  title="Copy"
+                  title={t.copy}
                 >
                   {copySuccess ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
                 </button>
@@ -1046,10 +1198,10 @@ export default function App() {
                 {isTranslating ? (
                   <div className="flex flex-col items-center justify-center h-full gap-3">
                     <Loader2 className="w-8 h-8 text-[#006233] animate-spin" />
-                    <p className="text-sm font-medium animate-pulse">Translating to {targetLang}...</p>
+                    <p className="text-sm font-medium animate-pulse">{t.translating} {targetLang}...</p>
                   </div>
                 ) : (
-                  outputText || "Translation will appear here..."
+                  outputText || t.translationPlaceholder
                 )}
               </div>
             </div>
@@ -1064,7 +1216,7 @@ export default function App() {
             className="px-12 py-4 bg-gradient-to-r from-[#006233] to-[#006233] hover:from-[#004d28] hover:to-[#004d28] disabled:bg-gray-400 text-white rounded-2xl font-bold text-lg shadow-xl shadow-green-900/20 transition-all active:scale-95 flex items-center gap-3 border-b-4 border-[#D21034]"
           >
             {isTranslating ? <Loader2 className="animate-spin" /> : <Languages />}
-            Translate
+            {t.translate}
           </button>
         </div>
 
@@ -1104,7 +1256,7 @@ export default function App() {
               <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Settings size={20} className="text-blue-600" />
-                  App Settings
+                  {t.appSettings}
                 </h2>
                 <button onClick={() => setIsSettingsOpen(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
                   <X size={20} />
@@ -1113,37 +1265,7 @@ export default function App() {
 
               <div className="p-6 flex flex-col gap-6 max-h-[70vh] overflow-y-auto">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Appearance</label>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setSettings({ ...settings, theme: 'light' })}
-                      className={cn(
-                        "flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 transition-all",
-                        settings.theme === 'light' 
-                          ? "bg-blue-50 border-blue-200 text-blue-600 font-bold" 
-                          : "bg-gray-50 dark:bg-[#0F1115] border-gray-200 dark:border-gray-800 text-gray-500"
-                      )}
-                    >
-                      <Sun size={18} />
-                      Light
-                    </button>
-                    <button 
-                      onClick={() => setSettings({ ...settings, theme: 'dark' })}
-                      className={cn(
-                        "flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 transition-all",
-                        settings.theme === 'dark' 
-                          ? "bg-blue-900/20 border-blue-800 text-blue-400 font-bold" 
-                          : "bg-gray-50 dark:bg-[#0F1115] border-gray-200 dark:border-gray-800 text-gray-500"
-                      )}
-                    >
-                      <Moon size={18} />
-                      Dark
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Active API Provider</label>
+                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t.activeProvider}</label>
                   <div className="relative flex items-center">
                     <select 
                       value={settings.provider}
@@ -1163,7 +1285,7 @@ export default function App() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Model for {settings.provider.toUpperCase()}</label>
+                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t.model} for {settings.provider.toUpperCase()}</label>
                   <div className="relative flex items-center">
                     <select 
                       value={settings.selectedModels[settings.provider]}
@@ -1197,15 +1319,15 @@ export default function App() {
                   <div className="p-4 bg-green-50/50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30 rounded-2xl space-y-2">
                     <label className="text-xs font-bold text-[#006233] dark:text-[#00a857] flex items-center gap-1">
                       <Globe size={12} />
-                      Smart Key Detection
+                      {t.smartDetection}
                     </label>
                     <input 
                       type="password"
-                      placeholder="Paste any API key here to auto-detect..."
+                      placeholder={t.smartDetectionPlaceholder}
                       onChange={(e) => handleSmartKeyDetect(e.target.value)}
                       className="w-full p-2 bg-white dark:bg-[#0F1115] border border-blue-200 dark:border-blue-800 rounded-xl outline-none focus:border-blue-500 text-sm"
                     />
-                    <p className="text-[10px] text-blue-500/70">Paste a key to automatically set the provider and key.</p>
+                    <p className="text-[10px] text-blue-500/70">{t.smartDetectionHint}</p>
                   </div>
                   
                   {/* Gemini Key */}
@@ -1343,19 +1465,19 @@ export default function App() {
                     </div>
                   </div>
 
-                  <p className="text-[10px] text-gray-400 italic">Keys are stored locally on your device.</p>
+                  <p className="text-[10px] text-gray-400 italic">{t.keysStoredLocally}</p>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Text-to-Speech Engine</label>
+                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t.ttsEngine}</label>
                     <div className="flex items-center gap-3">
                       {settings.ttsProvider === 'puter' && (
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                             <div className={cn("w-1.5 h-1.5 rounded-full", isPuterReady ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-amber-500 animate-pulse")} />
                             <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
-                              {isPuterReady ? "Puter Ready" : "Initializing..."}
+                              {isPuterReady ? t.puterReady : t.initializing}
                             </span>
                           </div>
                           {!isPuterReady && (
@@ -1368,20 +1490,20 @@ export default function App() {
                               }}
                               className="text-[10px] text-blue-500 hover:underline"
                             >
-                              Retry
+                              {t.retry}
                             </button>
                           )}
                         </div>
                       )}
                       <button 
-                        onClick={() => handleSpeak(settings.defaultOutputLang === 'English' ? "Hello, this is a voice test." : "مرحباً، هذا اختبار للصوت.")}
+                        onClick={() => handleSpeak(settings.uiLanguage === 'en' ? "Hello, this is a voice test." : "مرحباً، هذا اختبار للصوت.")}
                         className={cn(
                           "text-xs font-medium flex items-center gap-1 transition-colors",
                           isSpeaking ? "text-red-500 hover:text-red-600" : "text-blue-500 hover:text-blue-600"
                         )}
                       >
                         {isSpeaking ? <Volume2 size={12} className="animate-pulse" /> : <Volume2 size={12} />}
-                        {isSpeaking ? "Stop Test" : "Test Voice"}
+                        {isSpeaking ? t.stopTest : t.testVoice}
                       </button>
                     </div>
                   </div>
@@ -1402,7 +1524,7 @@ export default function App() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Voice Gender</label>
+                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t.voiceGender}</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setSettings({ 
@@ -1418,7 +1540,7 @@ export default function App() {
                       )}
                     >
                       <div className={cn("w-2 h-2 rounded-full", settings.voiceGender === 'female' ? "bg-pink-500" : "bg-gray-300")} />
-                      Female (Recommended)
+                      {t.female}
                     </button>
                     <button
                       onClick={() => setSettings({ 
@@ -1434,13 +1556,13 @@ export default function App() {
                       )}
                     >
                       <div className={cn("w-2 h-2 rounded-full", settings.voiceGender === 'male' ? "bg-blue-500" : "bg-gray-300")} />
-                      Male
+                      {t.male}
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Voiceover Style</label>
+                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t.voiceStyle}</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setSettings({ ...settings, voiceStyle: 'natural' })}
@@ -1451,7 +1573,7 @@ export default function App() {
                           : "bg-gray-50 dark:bg-[#0F1115] border-gray-200 dark:border-gray-800 text-gray-500 hover:border-gray-300"
                       )}
                     >
-                      Natural
+                      {t.natural}
                     </button>
                     <button
                       onClick={() => setSettings({ ...settings, voiceStyle: 'storyteller' })}
@@ -1462,13 +1584,13 @@ export default function App() {
                           : "bg-gray-50 dark:bg-[#0F1115] border-gray-200 dark:border-gray-800 text-gray-500 hover:border-gray-300"
                       )}
                     >
-                      Storyteller
+                      {t.storyteller}
                     </button>
                   </div>
                 </div>
                 {settings.ttsProvider === 'gemini' && (
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Gemini Voice Style</label>
+                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t.geminiVoiceStyle}</label>
                     <div className="relative flex items-center">
                       <select 
                         value={settings.geminiVoice}
@@ -1495,24 +1617,6 @@ export default function App() {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Default Output Language</label>
-                  <div className="relative flex items-center">
-                    <select 
-                      value={settings.defaultOutputLang}
-                      onChange={(e) => setSettings({ ...settings, defaultOutputLang: e.target.value })}
-                      className="w-full p-3 bg-gray-50 dark:bg-[#0F1115] border border-gray-200 dark:border-gray-800 rounded-xl outline-none focus:border-blue-500 appearance-none cursor-pointer"
-                    >
-                      {LANGUAGES.map(lang => (
-                        <option key={lang} value={lang}>{lang}</option>
-                      ))}
-                    </select>
-                    <div className="absolute right-4 pointer-events-none text-gray-400">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-3">
                   <button 
                     onClick={() => {
@@ -1522,7 +1626,7 @@ export default function App() {
                     className="w-full p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center justify-center gap-2"
                   >
                     <Trash2 size={16} />
-                    Reset App & Rebuild Cache
+                    {t.resetApp}
                   </button>
                   <button 
                     onClick={() => {
@@ -1532,7 +1636,7 @@ export default function App() {
                     className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition-all"
                   >
                     <Save size={20} />
-                    Save Configuration
+                    {t.saveConfig}
                   </button>
                 </div>
               </div>
@@ -1543,7 +1647,6 @@ export default function App() {
 
       {/* Footer */}
       <footer className="mt-auto p-8 text-center text-gray-400 text-sm">
-        <p>© 2026 DZ Dialect AI. Built for the Algerian community.</p>
       </footer>
     </div>
   );
