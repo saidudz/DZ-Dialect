@@ -322,7 +322,7 @@ export default function App() {
     try {
       while (attempts < maxAttempts) {
         let text = '';
-        const systemPrompt = `Translate from ${sourceLang} to ${targetLang}.
+        const systemPrompt = `You are an expert Algerian linguist. Translate from ${sourceLang} to ${targetLang}.
         STRICT RULES:
         - Output ONLY the translated sentence.
         - Exactly ONE sentence.
@@ -331,9 +331,11 @@ export default function App() {
         - NO punctuation at the end (no dots, no commas).
         ${isTargetDarija ? `
         - Use ONLY Arabic script (no Latin letters, no French/English letters, no Arabizi).
-        - Even if using a French-origin word, write it in Arabic letters (e.g., write 'طوموبيل' not 'voiture').
-        - Use casual, natural Algerian Darija.
-        - Avoid formal Arabic completely.
+        - Use authentic Algerian Darija (Algerian Dialect) as spoken in daily life.
+        - Incorporate natural loanwords from French/Spanish/Berber but write them in Arabic script (e.g., 'طوموبيل' for car, 'كوزينة' for kitchen, 'بزاف' for a lot).
+        - Ensure the grammar follows Algerian dialect rules (e.g., using 'راني' for 'I am', 'شكون' for 'who', 'واش' for 'what').
+        - Avoid Modern Standard Arabic (Fusha) completely.
+        - Capture the specific tone and cultural nuance of Algeria.
         ` : ''}
         - No introductory text.`;
 
