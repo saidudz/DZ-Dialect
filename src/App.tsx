@@ -70,8 +70,8 @@ const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string; isFree?: 
   ],
   groq: [
     { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', isFree: true },
-    { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B', isFree: true },
-    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', isFree: true },
+    { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', isFree: true },
+    { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill Llama 70B', isFree: true },
   ],
 };
 
