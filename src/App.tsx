@@ -25,12 +25,12 @@ import {
   ClipboardPaste
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { cn } from './lib/utils';
 
 // Types
 type APIProvider = 'gemini' | 'openai' | 'openrouter' | 'xai' | 'groq';
-type TTSProvider = 'gemini' | 'puter' | 'web';
+type TTSProvider = 'gemini' | 'puter' | 'web' | 'moss';
 type GeminiVoice = 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr';
 type VoiceGender = 'male' | 'female';
 type VoiceStyle = 'natural' | 'storyteller';
@@ -51,15 +51,16 @@ interface AppSettings {
   recipientGender: Gender;
   defaultOutputLang: string;
   webVoiceName: string;
+  modelscopeToken: string;
   theme: 'light' | 'dark';
   uiLanguage: UILanguage;
 }
 
 const PROVIDER_MODELS: Record<APIProvider, { id: string; name: string; isFree?: boolean }[]> = {
   gemini: [
-    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', isFree: true },
-    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', isFree: true },
-    { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite', isFree: true },
+    { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', isFree: true },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', isFree: true },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', isFree: true },
   ],
   openai: [
     { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
@@ -95,7 +96,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
   provider: 'gemini',
   selectedModels: {
-    gemini: 'gemini-3-flash-preview',
+    gemini: 'gemini-2.0-flash-exp',
     openai: 'gpt-4o-mini',
     openrouter: 'google/gemini-2.0-flash-001',
     xai: 'grok-beta',
@@ -111,6 +112,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   recipientGender: 'neutral',
   defaultOutputLang: 'Algerian Dialect (Darija) | الدارجة الجزائرية',
   webVoiceName: '',
+  modelscopeToken: '',
   theme: 'dark',
   uiLanguage: 'en',
 };
@@ -127,6 +129,7 @@ const TRANSLATIONS = {
     smartDetectionHint: 'Paste a key to automatically set the provider and key.',
     keysStoredLocally: 'Keys are stored locally on your device.',
     ttsEngine: 'Text-to-Speech Engine',
+    modelscopeToken: 'ModelScope Token (for MOSS API)',
     voiceGender: 'Voice Gender',
     voiceStyle: 'Voiceover Style',
     voiceSpeed: 'Voice Speed',
@@ -177,6 +180,7 @@ const TRANSLATIONS = {
     smartDetectionHint: 'الصق المفتاح لضبط المزود والمفتاح تلقائياً.',
     keysStoredLocally: 'يتم تخزين المفاتيح محلياً على جهازك.',
     ttsEngine: 'محرك تحويل النص إلى كلام',
+    modelscopeToken: 'رمز ModelScope (لـ MOSS API)',
     voiceGender: 'جنس الصوت',
     voiceStyle: 'نمط التعليق الصوتي',
     voiceSpeed: 'سرعة الصوت',
@@ -530,17 +534,21 @@ export default function App() {
         STRICT: NO alternatives or lists.`;
 
         if (settings.provider === 'gemini') {
-          const genAI = new GoogleGenAI({ apiKey: apiKeyToUse });
-          const response = await genAI.models.generateContent({
+          const genAI = new GoogleGenerativeAI(apiKeyToUse);
+          const model = genAI.getGenerativeModel({ 
             model: settings.selectedModels.gemini,
-            contents: inputText,
-            config: {
-              systemInstruction: systemPrompt,
+            systemInstruction: systemPrompt,
+          });
+          
+          const result = await model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: inputText }] }],
+            generationConfig: {
               temperature: 0.1 + (attempts * 0.1),
               maxOutputTokens: 1000,
             }
           });
-          text = (response.text || '').trim();
+          const response = await result.response;
+          text = response.text().trim();
         } else {
           const apiEndpoints: Record<APIProvider, string> = {
             gemini: '',
@@ -745,10 +753,9 @@ export default function App() {
     // Vocalize Arabic text for better pronunciation
     if (isArabicText && apiKeyToUse) {
       try {
-        const genAI = new GoogleGenAI({ apiKey: apiKeyToUse });
-        const result = await genAI.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: `
+        const genAI = new GoogleGenerativeAI(apiKeyToUse);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await model.generateContent(`
           ACT AS AN ARABIC PHONETICS EXPERT.
           TASK: Vocalize the following Arabic text (Standard or Dialect) with full diacritics (Harakat) to guide a Text-to-Speech engine for a NATURAL and CLEAR pronunciation.
           TEXT: ${text}
@@ -757,8 +764,9 @@ export default function App() {
           2. If the text is in Algerian Dialect (Darija), preserve the dialectal pronunciation but use Harakat to represent it accurately (e.g., use Sukun for consonant clusters common in Darija).
           3. Ensure the flow is natural and the pronunciation is authentic to the specific dialect or standard Arabic.
           4. OUTPUT ONLY THE VOCALIZED TEXT. NO INTRO OR OUTRO.
-        `});
-        const vocalized = (result.text || '').trim();
+        `);
+        const response = await result.response;
+        const vocalized = response.text().trim();
         if (vocalized && vocalized.length > 0) {
           textToSpeak = vocalized;
         }
@@ -767,7 +775,13 @@ export default function App() {
       }
     }
 
-    // 1. Try Puter TTS (Free & High Quality)
+    // 1. Try MOSS TTS (ModelScope API)
+    if (settings.ttsProvider === 'moss') {
+      const success = await handleMossTTS(textToSpeak, stopSpeaking);
+      if (success) return;
+    }
+
+    // 2. Try Puter TTS (Free & High Quality)
     if (settings.ttsProvider === 'puter') {
       const puter = (window as any).puter;
       console.log('Attempting Puter TTS...', { isPuterReady, hasPuter: !!puter });
@@ -849,9 +863,11 @@ export default function App() {
     }
 
     // 2. Try Gemini TTS
-    if ((settings.ttsProvider === 'gemini' || settings.ttsProvider === 'puter') && apiKeyToUse) {
-      const success = await handleGeminiTTS(textToSpeak, apiKeyToUse, isArabicText, stopSpeaking);
-      if (success) return;
+    if (settings.ttsProvider === 'gemini' || settings.ttsProvider === 'puter') {
+      if (apiKeyToUse) {
+        const success = await handleGeminiTTS(textToSpeak, apiKeyToUse, isArabicText, stopSpeaking);
+        if (success) return;
+      }
     }
 
     // 3. Fallback to Web Speech API
@@ -860,7 +876,7 @@ export default function App() {
 
   const handleGeminiTTS = async (text: string, apiKey: string, isArabic: boolean, onEnd: () => void): Promise<boolean> => {
     try {
-      const genAI = new GoogleGenAI({ apiKey });
+      const genAI = new GoogleGenerativeAI(apiKey);
       
       // Refined prompt for better Algerian/Arabic dialect
       const styleInstruction = settings.voiceStyle === 'storyteller' 
@@ -875,19 +891,20 @@ export default function App() {
             : `Act as a professional Arabic voiceover artist. ${styleInstruction} Read this text in Modern Standard Arabic (Fusha) with perfect Tajweed and clear pronunciation of all vowels and diacritics. Ensure the tone is formal and elegant: ${text}`)
         : `${styleInstruction} Read this naturally in ${targetLang}: ${text}`;
 
-      const response = await genAI.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
           responseModalities: ["AUDIO"],
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName: settings.geminiVoice }, 
             },
           },
-        },
+        } as any,
       });
 
+      const response = await result.response;
       const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (base64Audio) {
         const binary = atob(base64Audio);
@@ -974,6 +991,140 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
+  const handleMossTTS = async (text: string, onEnd: () => void): Promise<boolean> => {
+    try {
+      const token = settings.modelscopeToken;
+      if (!token) {
+        setError(settings.uiLanguage === 'ar' ? 'يرجى إدخال رمز ModelScope في الإعدادات لاستخدام MOSS API.' : 'Please enter your ModelScope Token in settings to use MOSS API.');
+        return false;
+      }
+
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-MS-Task': 'text-to-speech',
+        'Accept': 'application/json, audio/wav, audio/mpeg, application/octet-stream'
+      };
+
+      // Ensure we have an audio context
+      const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+      if (!currentAudioContextRef.current) {
+        currentAudioContextRef.current = new AudioContextClass();
+      }
+      const audioCtx = currentAudioContextRef.current;
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+      // Attempt Inference API (Inference service)
+      const tryFetch = async (payload: any) => {
+        return fetch('https://api-inference.modelscope.cn/api/v1/models/openmoss/MOSS-TTS-Nano/infer', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+      };
+
+      let response = await tryFetch({ input: { text } });
+      if (!response.ok) response = await tryFetch({ input: text });
+      
+      if (!response.ok) {
+        // Fallback: Try ModelScope Studio (Gradio) endpoint if directly supported via token
+        response = await fetch('https://modelscope.cn/api/v1/studios/openmoss/MOSS-TTS-Nano/gradio/run/predict', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            data: [text, "English", "Female", 1.0, 1.0] // Common Gradio TTS signature
+          })
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(`MOSS API failed with status ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      
+      if (contentType.includes('audio') || contentType.includes('octet-stream')) {
+        const arrayBuffer = await response.arrayBuffer();
+        return await playArrayBuffer(arrayBuffer, onEnd);
+      }
+
+      // JSON response processing
+      const result = await response.json();
+      console.log('MOSS API Response:', result);
+
+      // Extract audio data from various possible structures
+      let audioData = result.Data?.audio || 
+                      result.data?.audio || 
+                      result.audio || 
+                      result.output?.audio_url || 
+                      result.output?.audio ||
+                      result.output?.audio_base64;
+
+      // Handle Gradio list output
+      if (!audioData && Array.isArray(result.data)) {
+        audioData = result.data[0]?.data || result.data[0];
+      }
+      
+      if (!audioData && (result.Data || result.data)) {
+        const potential = result.Data || result.data;
+        if (typeof potential === 'string') audioData = potential;
+      }
+      
+      if (audioData) {
+        // Handle Gradio file object
+        if (typeof audioData === 'object' && audioData.data && audioData.is_file === false) {
+           audioData = audioData.data;
+        }
+
+        if (typeof audioData === 'string') {
+          if (audioData.startsWith('http')) {
+            const audioRes = await fetch(audioData);
+            const arrayBuffer = await audioRes.arrayBuffer();
+            return await playArrayBuffer(arrayBuffer, onEnd);
+          } else {
+            // Base64
+            const cleanBase64 = audioData.includes(',') ? audioData.split(',')[1] : audioData;
+            // Remove any whitespace or control characters
+            const sanitized = cleanBase64.replace(/\s/g, ''); 
+            const binaryString = atob(sanitized);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
+            return await playArrayBuffer(bytes.buffer, onEnd);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('MOSS TTS failed:', err);
+    }
+    return false;
+  };
+
+  const playArrayBuffer = async (buffer: ArrayBuffer, onEnd: () => void): Promise<boolean> => {
+    try {
+      const audioCtx = currentAudioContextRef.current;
+      if (!audioCtx) return false;
+      
+      const audioBuffer = await audioCtx.decodeAudioData(buffer.slice(0));
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtx.destination);
+      source.playbackRate.value = settings.voiceSpeed;
+      
+      currentSourceRef.current = source;
+      source.onended = () => {
+        onEnd();
+        if (currentSourceRef.current === source) currentSourceRef.current = null;
+      };
+      
+      source.start(0);
+      return true;
+    } catch (e) {
+      console.error('Error decoding/playing MOSS audio buffer:', e);
+      return false;
+    }
+  };
+
   // Copy to Clipboard
   const handleCopy = () => {
     navigator.clipboard.writeText(outputText);
@@ -1031,12 +1182,9 @@ export default function App() {
 
     try {
       if (provider === 'gemini') {
-        const genAI = new GoogleGenAI({ apiKey: key });
-        await genAI.models.generateContent({
-          model: settings.selectedModels.gemini,
-          contents: "hi",
-          config: { maxOutputTokens: 1 }
-        });
+        const genAI = new GoogleGenerativeAI(key);
+        const model = genAI.getGenerativeModel({ model: settings.selectedModels.gemini });
+        await model.generateContent("hi");
       } else {
         const apiEndpoints: Record<APIProvider, string> = {
           gemini: '',
@@ -1707,14 +1855,31 @@ export default function App() {
                       <option value="gemini">✨ Google Gemini AI (Premium Quality)</option>
                       <option value="web">🔵 Google Web Speech (Free)</option>
                       <option value="puter">🟢 Puter AI (Natural & Free)</option>
+                      <option value="moss">🚀 MOSS AI (Multilingual & Fast)</option>
                     </select>
                     <div className={cn(
                       "absolute right-4 pointer-events-none",
-                      settings.ttsProvider === 'gemini' ? "text-blue-500" : "text-gray-400"
+                      settings.ttsProvider === 'gemini' || settings.ttsProvider === 'moss' ? "text-blue-500" : "text-gray-400"
                     )}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </div>
                   </div>
+
+                  {settings.ttsProvider === 'moss' && (
+                    <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">{t.modelscopeToken}</label>
+                      <input 
+                        type="password"
+                        value={settings.modelscopeToken}
+                        onChange={(e) => setSettings({ ...settings, modelscopeToken: e.target.value })}
+                        placeholder="Enter ModelScope Token..."
+                        className="w-full p-3 bg-gray-50 dark:bg-[#0F1115] border border-gray-200 dark:border-gray-800 rounded-xl outline-none focus:border-blue-500 text-sm"
+                      />
+                      <p className="text-[9px] text-gray-400 mt-1 italic">
+                        Get your token from ModelScope Settings. Supports all languages.
+                      </p>
+                    </div>
+                  )}
 
                   {settings.ttsProvider === 'web' && availableVoices.length > 0 && (
                     <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
